@@ -128,6 +128,17 @@ def scan_target(
         probe_opts=probe_opts or {},
     )
 
+    # AI-powered analysis (optional, runs after deterministic checks)
+    if opts.get("claude"):
+        from mcpvenom.checks.llm_analysis import run_llm_analysis
+        claude_model = opts.get("claude_model", "claude-sonnet-4-20250514")
+        run_llm_analysis(
+            session, result,
+            probe_opts=probe_opts or {},
+            model=claude_model,
+            console=console,
+        )
+
     session.close()
     result.timings["total"] = time.time() - t_start
     console.print(

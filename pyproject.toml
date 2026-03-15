@@ -38,6 +38,9 @@ dev = [
 k8s = [
     "kubernetes>=31.0",
 ]
+ai = [
+    "anthropic>=0.40",
+]
 
 [project.scripts]
 mcpvenom = "mcpvenom.__main__:main"

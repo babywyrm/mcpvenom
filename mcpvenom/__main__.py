@@ -77,6 +77,8 @@ def main():
             panel_lines.append(f"Auth: OIDC client_credentials (client={args.client_id})")
         else:
             panel_lines.append("Auth: Bearer token")
+    if args.claude:
+        panel_lines.append(f"AI: Claude ({args.claude_model})")
 
     console.print(
         Panel(
@@ -91,6 +93,8 @@ def main():
         "safe_mode": args.safe_mode,
         "probe_calls": args.probe_calls,
         "tool_names_file": getattr(args, "tool_names_file", None),
+        "claude": args.claude,
+        "claude_model": args.claude_model,
     }
 
     if args.no_invoke:

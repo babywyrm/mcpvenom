@@ -190,6 +190,19 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         help="Custom wordlist of tool names for ToolServer enumeration "
         "(one per line, # comments). Supplements the built-in list.",
     )
+    p.add_argument(
+        "--claude",
+        action="store_true",
+        help="Enable AI-powered analysis using Claude. Requires ANTHROPIC_API_KEY env var. "
+        "Layers LLM reasoning on top of deterministic checks to catch subtle issues.",
+    )
+    p.add_argument(
+        "--claude-model",
+        metavar="MODEL",
+        default="claude-sonnet-4-20250514",
+        help="Claude model to use for AI analysis (default: claude-sonnet-4-20250514). "
+        "Use claude-opus-4-20250514 for deepest analysis.",
+    )
     return p.parse_args(args)
 
 
