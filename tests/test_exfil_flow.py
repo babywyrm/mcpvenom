@@ -1,8 +1,8 @@
 """Tests for exfil_flow check."""
 
 import pytest
-from mcpredator.core.models import TargetResult
-from mcpredator.checks.exfil_flow import check_exfil_flow
+from mcpvenom.core.models import TargetResult
+from mcpvenom.checks.exfil_flow import check_exfil_flow
 
 
 def _make(tools):

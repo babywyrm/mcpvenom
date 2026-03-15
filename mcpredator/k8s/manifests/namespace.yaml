@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: mcpredator
-  labels:
-    app.kubernetes.io/name: mcpredator
-    app.kubernetes.io/part-of: agentsmith

@@ -2,8 +2,8 @@
 
 import pytest
 
-from mcpredator.core.models import TargetResult
-from mcpredator.checks.rate_limit import check_rate_limit
+from mcpvenom.core.models import TargetResult
+from mcpvenom.checks.rate_limit import check_rate_limit
 
 
 def test_rate_limit_clean_tool(result_with_tools):

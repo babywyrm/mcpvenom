@@ -1,8 +1,8 @@
 """Tests for actuator_probe check."""
 
 import pytest
-from mcpredator.core.models import TargetResult
-from mcpredator.checks.actuator_probe import check_actuator_probe, DEBUG_ENDPOINTS, SENSITIVE_CONTENT_PATTERNS
+from mcpvenom.core.models import TargetResult
+from mcpvenom.checks.actuator_probe import check_actuator_probe, DEBUG_ENDPOINTS, SENSITIVE_CONTENT_PATTERNS
 
 
 def test_debug_endpoints_list():

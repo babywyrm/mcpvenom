@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Zero-config mcpredator runner — no venv activation needed.
+# Zero-config mcpvenom runner — no venv activation needed.
 # Usage: ./scan --targets http://localhost:9090
 #        ./scan --port-range localhost:9001-9010 --verbose
 set -euo pipefail
@@ -12,4 +12,4 @@ if [ ! -f "$VENV_PYTHON" ]; then
     exit 1
 fi
 
-exec "$VENV_PYTHON" -m mcpredator "$@"
+exec "$VENV_PYTHON" -m mcpvenom "$@"

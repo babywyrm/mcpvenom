@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from mcpredator.cli import (
+from mcpvenom.cli import (
     parse_args,
     build_url_list,
     _load_urls_from_file,

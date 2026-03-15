@@ -1,4 +1,4 @@
-# mcpredator
+# mcpvenom
 
 **MCP Red Teaming & Security Scanner**
 
@@ -21,18 +21,18 @@ for training, or point at any MCP server in dev/staging/prod.
 
 **Quickstart (recommended):**
 ```bash
-git clone https://github.com/babywyrm/mcpredator.git && cd mcpredator
+git clone https://github.com/babywyrm/mcpvenom.git && cd mcpvenom
 ./quickstart.sh
 ```
 
 This creates a `.venv`, installs everything, runs tests, and prints usage.
-After that, `./scan` and `uv run mcpredator` just work — no activation needed.
+After that, `./scan` and `uv run mcpvenom` just work — no activation needed.
 
 **uv (manual):**
 ```bash
 uv venv .venv
 uv pip install -e ".[dev]"
-uv run mcpredator --help
+uv run mcpvenom --help
 ```
 
 No `source .venv/bin/activate` needed — `uv run` finds the project venv automatically.
@@ -45,7 +45,7 @@ pip install -e ".[dev]"
 
 **From PyPI** (coming soon):
 ```bash
-uv pip install mcpredator
+uv pip install mcpvenom
 ```
 
 ---
@@ -77,8 +77,8 @@ uv pip install mcpredator
 uv run pytest tests/ -v
 ```
 
-All `./scan` commands also work as `uv run mcpredator` (no activation needed),
-`mcpredator` (with venv activated), or `.venv/bin/mcpredator`.
+All `./scan` commands also work as `uv run mcpvenom` (no activation needed),
+`mcpvenom` (with venv activated), or `.venv/bin/mcpvenom`.
 
 ---
 
@@ -353,7 +353,7 @@ uv run pytest tests/ -v -x
 
 ## Kubernetes Deployment
 
-Deploy mcpredator as a K8s Job to scan cluster-internal MCP services and
+Deploy mcpvenom as a K8s Job to scan cluster-internal MCP services and
 audit the Kubernetes posture from inside.
 
 ### Clusters with many MCPs
@@ -365,28 +365,28 @@ When a cluster has many services (dozens or hundreds of potential MCP endpoints)
 - **Cap endpoints** — Limit how many MCPs are scanned: `--k8s-max-endpoints 50`.
   Annotation-sourced endpoints are kept first; then probed; then port-match.
 - **Discover-only triage** — List endpoints without running full MCP scans:
-  `mcpredator --k8s-discover --k8s-discover-only --json endpoints.json`
+  `mcpvenom --k8s-discover --k8s-discover-only --json endpoints.json`
   to export a URL list for triage or splitting across jobs.
 - **Service fingerprinting** — Uses the same worker count for parallel HTTP
   probes when enumerating frameworks and exposed actuator/debug paths.
 
-> **Note:** Use `mcpredator` (not `./scan`) in K8s manifests — inside the
+> **Note:** Use `mcpvenom` (not `./scan`) in K8s manifests — inside the
 > container the package is installed globally.
 
 ### Quick deploy
 
 ```bash
 # Build the image
-docker build -f mcpredator/k8s/Dockerfile -t mcpredator:latest .
+docker build -f mcpvenom/k8s/Dockerfile -t mcpvenom:latest .
 
 # Deploy (read-only cluster access)
-kubectl apply -k mcpredator/k8s/manifests/
+kubectl apply -k mcpvenom/k8s/manifests/
 
 # Optional: enable full RBAC auditing (SA blast radius mapping)
-kubectl apply -f mcpredator/k8s/manifests/rbac-impersonate.yaml
+kubectl apply -f mcpvenom/k8s/manifests/rbac-impersonate.yaml
 
 # Check results
-kubectl logs -n mcpredator -l app.kubernetes.io/name=mcpredator
+kubectl logs -n mcpvenom -l app.kubernetes.io/name=mcpvenom
 ```
 
 > **Note:** The base deployment grants read-only access to services, pods,
@@ -416,7 +416,7 @@ kubectl logs -n mcpredator -l app.kubernetes.io/name=mcpredator
 Use the CronJob manifest for periodic auditing:
 
 ```bash
-kubectl apply -f mcpredator/k8s/manifests/cronjob.yaml
+kubectl apply -f mcpvenom/k8s/manifests/cronjob.yaml
 ```
 
 Default schedule: every 6 hours. Edit the `spec.schedule` field to change.
@@ -445,9 +445,9 @@ args:
 .
 ├── quickstart.sh              # One-command setup (venv + install + tests)
 ├── scan                       # Zero-config runner (no venv activation needed)
-├── mcpredator/                # Python package
+├── mcpvenom/                # Python package
 │   ├── __init__.py            # Version, package docstring
-│   ├── __main__.py            # Entry point (python -m mcpredator)
+│   ├── __main__.py            # Entry point (python -m mcpvenom)
 │   ├── cli.py                 # Argument parsing
 │   ├── scanner.py             # Scan orchestration, parallel execution, cross-target analysis
 │   ├── diff.py                # Differential scanning (baseline save/load/compare)

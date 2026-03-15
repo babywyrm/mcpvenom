@@ -8,9 +8,9 @@ Skipped by default — opt in with:  MCP_PUBLIC_TARGETS=1 pytest tests/test_publ
 import os
 import pytest
 
-from mcpredator.core.session import detect_transport
-from mcpredator.core.models import TargetResult
-from mcpredator.core.enumerator import enumerate_server
+from mcpvenom.core.session import detect_transport
+from mcpvenom.core.models import TargetResult
+from mcpvenom.core.enumerator import enumerate_server
 
 skip_remote = pytest.mark.skipif(
     os.environ.get("MCP_PUBLIC_TARGETS", "0") != "1",

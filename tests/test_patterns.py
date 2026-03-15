@@ -4,7 +4,7 @@ import re
 
 import pytest
 
-from mcpredator.patterns.rules import (
+from mcpvenom.patterns.rules import (
     RATE_LIMIT_PATTERNS,
     PROMPT_LEAKAGE_PATTERNS,
     SUPPLY_CHAIN_PATTERNS,

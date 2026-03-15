@@ -2,7 +2,7 @@
 DVMCP challenge tests — offline synthetic checks + optional live integration.
 
 Each DVMCP challenge (ports 9001–9010) maps to a specific attack class.
-The offline tests verify mcpredator's checks fire on tool metadata that
+The offline tests verify mcpvenom's checks fire on tool metadata that
 mirrors what each challenge exposes.  Live tests (skipped by default)
 connect to actual DVMCP instances.
 
@@ -15,15 +15,15 @@ import re
 
 import pytest
 
-from mcpredator.core.models import TargetResult, Finding
-from mcpredator.checks.injection import check_prompt_injection, check_tool_poisoning
-from mcpredator.checks.permissions import check_excessive_permissions, check_schema_risks
-from mcpredator.checks.theft import check_token_theft
-from mcpredator.checks.execution import check_code_execution, check_remote_access
-from mcpredator.checks.chaining import check_tool_shadowing, check_multi_vector, check_attack_chains
-from mcpredator.checks.rate_limit import check_rate_limit
-from mcpredator.checks.prompt_leakage import check_prompt_leakage
-from mcpredator.checks.supply_chain import check_supply_chain
+from mcpvenom.core.models import TargetResult, Finding
+from mcpvenom.checks.injection import check_prompt_injection, check_tool_poisoning
+from mcpvenom.checks.permissions import check_excessive_permissions, check_schema_risks
+from mcpvenom.checks.theft import check_token_theft
+from mcpvenom.checks.execution import check_code_execution, check_remote_access
+from mcpvenom.checks.chaining import check_tool_shadowing, check_multi_vector, check_attack_chains
+from mcpvenom.checks.rate_limit import check_rate_limit
+from mcpvenom.checks.prompt_leakage import check_prompt_leakage
+from mcpvenom.checks.supply_chain import check_supply_chain
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -728,7 +728,7 @@ class TestDVMCPLive:
 
     @pytest.mark.parametrize("port", DVMCP_PORTS)
     def test_transport_detected(self, port):
-        from mcpredator.core.session import detect_transport
+        from mcpvenom.core.session import detect_transport
         url = f"http://localhost:{port}/sse"
         session = detect_transport(url, connect_timeout=10.0)
         assert session is not None, f"No transport at port {port}"
@@ -736,8 +736,8 @@ class TestDVMCPLive:
 
     @pytest.mark.parametrize("port", DVMCP_PORTS)
     def test_has_tools(self, port):
-        from mcpredator.core.session import detect_transport
-        from mcpredator.core.enumerator import enumerate_server
+        from mcpvenom.core.session import detect_transport
+        from mcpvenom.core.enumerator import enumerate_server
         url = f"http://localhost:{port}/sse"
         session = detect_transport(url, connect_timeout=10.0)
         assert session is not None
@@ -749,9 +749,9 @@ class TestDVMCPLive:
     @pytest.mark.parametrize("port", DVMCP_PORTS)
     def test_findings_detected(self, port):
         """Each DVMCP challenge should produce at least one finding."""
-        from mcpredator.core.session import detect_transport
-        from mcpredator.core.enumerator import enumerate_server
-        from mcpredator.checks import run_all_checks
+        from mcpvenom.core.session import detect_transport
+        from mcpvenom.core.enumerator import enumerate_server
+        from mcpvenom.checks import run_all_checks
 
         url = f"http://localhost:{port}/sse"
         session = detect_transport(url, connect_timeout=10.0)

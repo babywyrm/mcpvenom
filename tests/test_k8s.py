@@ -2,24 +2,24 @@
 
 import pytest
 
-from mcpredator.cli import parse_args
-from mcpredator.k8s.discovery import (
+from mcpvenom.cli import parse_args
+from mcpvenom.k8s.discovery import (
     DiscoveredEndpoint,
     discover_services,
     _get_sa_token,
 )
-from mcpredator.k8s.scanner import (
+from mcpvenom.k8s.scanner import (
     GLOBAL_K8S_FINDINGS,
     _check_pod_security,
     _check_configmap_leaks,
     _check_helm_version_drift,
     _flatten_values,
 )
-from mcpredator.k8s.fingerprint import (
+from mcpvenom.k8s.fingerprint import (
     _detect_framework,
     ServiceFingerprint,
 )
-from mcpredator.core.models import Finding
+from mcpvenom.core.models import Finding
 
 
 def test_discover_services_no_sa_token():

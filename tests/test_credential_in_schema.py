@@ -1,8 +1,8 @@
 """Tests for credential_in_schema check."""
 
 import pytest
-from mcpredator.core.models import TargetResult
-from mcpredator.checks.credential_in_schema import check_credential_in_schema
+from mcpvenom.core.models import TargetResult
+from mcpvenom.checks.credential_in_schema import check_credential_in_schema
 
 
 def _make(tools):

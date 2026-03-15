@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# mcpredator quickstart — sets up venv, installs deps, runs tests, shows usage
+# mcpvenom quickstart — sets up venv, installs deps, runs tests, shows usage
 # Usage: ./quickstart.sh [--skip-tests] [--with-dvmcp]
 
 SKIP_TESTS=false
@@ -42,7 +42,7 @@ fail()   { echo -e "  ${RED}✗${NC} $1"; exit 1; }
 
 echo -e "${BOLD}"
 echo "  ┌──────────────────────────────────────┐"
-echo "  │  mcpredator — quickstart             │"
+echo "  │  mcpvenom — quickstart             │"
 echo "  │  MCP Red Teaming & Security Scanner  │"
 echo "  └──────────────────────────────────────┘"
 echo -e "${NC}"
@@ -99,9 +99,9 @@ fi
 source .venv/bin/activate
 ok "Activated .venv ($(python --version))"
 
-# ── Install mcpredator ───────────────────────────────────────────────────
+# ── Install mcpvenom ───────────────────────────────────────────────────
 
-banner "Installing mcpredator + dev dependencies"
+banner "Installing mcpvenom + dev dependencies"
 
 if [ "$PKG_MGR" = "uv" ]; then
     uv pip install -e ".[dev]" 2>&1 | tail -3
@@ -109,7 +109,7 @@ else
     pip install -e ".[dev]" 2>&1 | tail -3
 fi
 
-ok "mcpredator installed"
+ok "mcpvenom installed"
 
 # Verify CLI entry point
 ok "CLI wrapper: ./scan"
@@ -161,7 +161,7 @@ echo -e "  ${BOLD}Quick commands (no activation needed):${NC}"
 echo ""
 echo -e "  ${GREEN}# Scan a target${NC}"
 echo "  ./scan --targets http://localhost:9090"
-echo "  uv run mcpredator --targets http://localhost:9090"
+echo "  uv run mcpvenom --targets http://localhost:9090"
 echo ""
 echo -e "  ${GREEN}# Scan DVMCP challenges (ports 9001-9010)${NC}"
 echo "  ./scan --port-range localhost:9001-9010 --verbose"
