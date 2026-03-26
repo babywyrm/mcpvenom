@@ -7,8 +7,9 @@ servers. Combines **static metadata analysis** with **active behavioral
 probing** — connects to MCP servers, enumerates tools/resources/prompts,
 calls tools with safe payloads, and analyzes what comes back.
 
-Works against standard MCP (SSE, Streamable HTTP), non-standard tool servers
-(`POST /execute`), and Kubernetes-internal MCP deployments.
+Works against standard MCP (SSE, Streamable HTTP), **local stdio servers**
+(`npx`, `python`, etc.), non-standard tool servers (`POST /execute`), and
+Kubernetes-internal MCP deployments.
 
 Use with [DVMCP](https://github.com/harishsg993010/damn-vulnerable-MCP-server)
 for training, or point at any MCP server in dev/staging/prod.
@@ -77,6 +78,18 @@ Or run `./walkthrough/demo.sh` for the fully automated version.
 # Differential scan (compare to baseline)
 ./scan --targets http://localhost:9001 --baseline baseline.json
 
+# Scan a local MCP server via stdin/stdout (no proxy needed)
+./scan --stdio 'npx -y @modelcontextprotocol/server-everything'
+
+# Fast scan (~2min vs ~30min) — samples top 5 tools, skips heavy probes
+./scan --targets http://localhost:9090 --fast --verbose
+
+# Grouped findings (compact report)
+./scan --targets http://localhost:9090 --group-findings
+
+# Parallel deep probes (faster behavioral phase)
+./scan --targets http://localhost:9090 --probe-workers 4
+
 # AI-powered analysis (requires ANTHROPIC_API_KEY)
 ./scan --targets http://localhost:9002/sse --claude --verbose
 ./scan --targets http://localhost:9002/sse --claude --claude-model claude-opus-4-20250514
@@ -93,14 +106,14 @@ All `./scan` commands also work as `uv run mcpvenom` (no activation needed),
 ## How It Works
 
 ```
-1. CONNECT        Detect transport (SSE, Streamable HTTP, or custom tool server)
+1. CONNECT        Detect transport (SSE, Streamable HTTP, stdio, or custom tool server)
 2. ENUMERATE      initialize → tools/list → resources/list → prompts/list
                   (or probe tool names for non-MCP /execute APIs)
 3. STATIC CHECKS  Pattern-match metadata (names, descriptions, schemas)
 4. PROBE          Call tools with safe payloads, read resources
 5. ANALYZE        Scan responses for injection, exfil, leakage, drift
 6. AGGREGATE      Detect attack chains across findings
-7. REPORT         Console table + optional JSON
+7. REPORT         Console table (or --group-findings) + optional JSON
 ```
 
 ### Scan Phases
@@ -233,16 +246,25 @@ Scan Options:
   --timeout SEC               Per-target connection timeout (default: 25)
   --workers N                 Parallel scan workers (default: 4)
 
+Stdio Transport:
+  --stdio CMD                 Scan a local MCP server via stdin/stdout JSON-RPC
+                              (e.g. --stdio 'npx -y @modelcontextprotocol/server-everything')
+
 Safety Controls:
   --no-invoke                 Static-only: skip all behavioral probes (safe for production)
   --safe-mode                 Skip dangerous tools (delete/send/exec/write), probe read-only
   --probe-calls N             Invocations per tool for deep rug pull (default: 6)
+
+Performance:
+  --fast                      Sample top 5 security-relevant tools, skip heavy probes
+  --probe-workers N           Parallel deep behavioral probe threads (default: 1)
 
 Tool Server:
   --tool-names-file FILE      Custom wordlist for ToolServer enumeration (supplements built-in)
 
 Output:
   --json FILE                 Write JSON report to FILE
+  --group-findings            Collapse similar findings into compact grouped rows
   --verbose, -v               Verbose output
   --debug                     Debug output (very noisy)
 
@@ -266,6 +288,7 @@ Kubernetes:
 | Mode | Flag | What Runs | Use Case |
 |------|------|-----------|----------|
 | **Full** | (default) | Static + all behavioral probes | Dev/staging, DVMCP, CTFs |
+| **Fast** | `--fast` | Static + top-5 tools, skip heavy probes, cap workers at 2 | Quick triage, large tool sets |
 | **Safe** | `--safe-mode` | Static + probes on read-only tools only | Prod servers with mixed tool risk |
 | **Static** | `--no-invoke` | Static checks only, no tool calls | Prod servers, zero side-effect risk |
 | **AI** | `--claude` | All checks + Claude analysis | Deep analysis, subtle vuln hunting |
@@ -507,7 +530,7 @@ args:
 │   │   ├── constants.py       # Protocol versions, severity weights, attack chain patterns
 │   │   ├── enumerator.py      # MCP handshake: initialize → list tools/resources/prompts
 │   │   ├── models.py          # Finding, TargetResult dataclasses
-│   │   └── session.py         # SSE + HTTP + ToolServer transport detection and sessions
+│   │   └── session.py         # SSE + HTTP + Stdio + ToolServer transport detection and sessions
 │   ├── patterns/
 │   │   ├── rules.py           # Static regex patterns (injection, poison, theft, exec, etc.)
 │   │   └── probes.py          # Behavioral probe payloads, canary strings, response analysis

@@ -18,7 +18,7 @@ SEV_COLOR = {
 }
 
 SSE_PATHS = ["/sse", "/mcp/sse", "/v1/sse", "/stream", "/events", ""]
-POST_PATHS = ["/mcp", "/rpc", "/jsonrpc", "/v1/mcp", "/messages", ""]
+POST_PATHS = ["/mcp", "/message", "/rpc", "/jsonrpc", "/v1/mcp", "/messages", ""]
 
 ATTACK_CHAIN_PATTERNS = [
     ("prompt_injection", "code_execution"),

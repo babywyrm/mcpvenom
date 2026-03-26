@@ -2,7 +2,45 @@
 
 All notable changes to this submodule are documented here.
 
-## [Unreleased] - 2026-03
+## [6.0.0] - 2026-03
+
+### Added
+
+- **Stdio transport (`--stdio CMD`)** — Scan local MCP servers via stdin/stdout JSON-RPC.
+  Launches the command as a subprocess, communicates over newline-delimited JSON-RPC.
+  Eliminates the need for a proxy when scanning npm/npx/python-based MCP servers.
+  E.g. `--stdio 'npx -y @modelcontextprotocol/server-everything'`
+
+- **Fast mode (`--fast`)** — Samples top 5 security-relevant tools (ranked by danger
+  keywords, URL/command params, schema size), skips heavy probes (input_sanitization,
+  error_leakage, temporal_consistency, ssrf_probe), caps probe workers at 2. Cuts
+  LLM-backed scan time from ~30min to ~2min.
+
+- **Grouped findings (`--group-findings`)** — Collapses similar findings by check/severity
+  into compact rows with affected-tool lists and counts. Cleaner reports for servers
+  with many tools generating similar findings.
+
+- **Parallel probe workers (`--probe-workers N`)** — Deep behavioral probes run
+  concurrently via ThreadPoolExecutor with thread-safe finding accumulation.
+  Default: 1 (sequential). Set higher for faster scans at the cost of more
+  server load.
+
+- **Adaptive backoff in `_call_tool`** — Per-tool latency tracking, exponential retry
+  with jitter, progressive timeouts up to 30s. Reduces timeouts on slow servers
+  and avoids hammering overloaded endpoints.
+
+- **9 encoding bypass probe types** in `input_sanitization` — base64, hex, double-URL,
+  homoglyph, null byte, CRLF, fullwidth, concatenation, variable expansion. Each
+  technique commonly defeats blocklists that only filter raw payloads.
+
+- **Live exfil flow verification** — `check_exfil_flow` now performs source→sink tool
+  calls with canary data when a session is available, confirming reachability of
+  theoretical exfiltration paths (not just static classification).
+
+- **SSE+POST fallback fix** — Added `/message` to `POST_PATHS` and the SSE+POST
+  fallback combo loop for supergateway compatibility.
+
+## [5.0.0] - 2026-03
 
 ### Added
 
@@ -176,7 +214,7 @@ _Roadmap aligned with [MCP Red Team Playbook](https://github.com/babywyrm/sysadm
 - ~~**DVMCP scoreboard**~~ — ✓ Done. `tests/test_dvmcp.py` with offline + live tests
 - **DVMCP scoreboard CLI** — `./scan --dvmcp-scoreboard` to auto-run all 10 challenges, report pass/fail per challenge, optional JSON
 - **SARIF export** — Export findings as SARIF for IDE/CI (VS Code, GitHub Code Scanning)
-- **Encoding bypass probes** (MCP-T01) — Hex, base64, unicode homoglyph, delimiter escape variants for prompt injection
+- ~~**Encoding bypass probes**~~ — ✓ Done. 9 techniques (base64, hex, double-URL, homoglyph, null byte, CRLF, fullwidth, concatenation, variable expansion)
 
 ### Medium effort — new checks from playbook taxonomy + internal testing
 
@@ -211,6 +249,13 @@ _Gaps identified from [MCP Red Team Playbook](https://github.com/babywyrm/sysadm
 
 ### Done (previously planned)
 
+- ~~**Stdio transport**~~ — ✓ `--stdio CMD` for local MCP servers via stdin/stdout
+- ~~**Fast mode**~~ — ✓ `--fast` samples top 5 tools, skips heavy probes
+- ~~**Grouped findings**~~ — ✓ `--group-findings` collapses similar findings
+- ~~**Parallel probes**~~ — ✓ `--probe-workers N` with ThreadPoolExecutor
+- ~~**Adaptive backoff**~~ — ✓ Per-tool latency tracking, exponential retry with jitter
+- ~~**Encoding bypass probes**~~ — ✓ 9 encoding techniques in input_sanitization
+- ~~**Live exfil verification**~~ — ✓ Source→sink canary data confirmation
 - ~~**Differential MCP scanning**~~ — ✓ `--baseline` and `--save-baseline`
 - ~~**Fuzzing / live probing**~~ — ✓ Behavioral probe engine with safe tool invocation
 - ~~**Docker image**~~ — ✓ `k8s/Dockerfile` with multi-stage Python 3.12-slim build

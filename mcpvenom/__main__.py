@@ -6,6 +6,8 @@ Usage:
     mcpvenom --targets http://localhost:9090
     mcpvenom --port-range localhost:9001-9010 --verbose
     mcpvenom --targets http://target:9090 --auth-token $TOKEN --json report.json
+    mcpvenom --stdio 'npx -y @modelcontextprotocol/server-everything'
+    mcpvenom --targets http://target:9090 --fast --group-findings
 """
 
 import sys
@@ -14,7 +16,7 @@ from datetime import datetime
 from mcpvenom import __version__
 from mcpvenom.cli import parse_args, build_url_list
 from mcpvenom.core.auth import resolve_auth_token, detect_auth_requirements
-from mcpvenom.scanner import scan_target, run_parallel, detect_cross_shadowing
+from mcpvenom.scanner import scan_target, scan_stdio_target, run_parallel, detect_cross_shadowing
 from mcpvenom.reporting import print_report, write_json
 from mcpvenom.k8s import run_k8s_checks, discover_services, fingerprint_services
 from mcpvenom.diff import (
@@ -31,6 +33,44 @@ console = Console()
 
 def main():
     args = parse_args()
+
+    # --stdio mode: scan a local server via stdin/stdout, then exit
+    if args.stdio:
+        probe_opts = {
+            "no_invoke": args.no_invoke,
+            "safe_mode": args.safe_mode,
+            "probe_calls": args.probe_calls,
+            "tool_names_file": getattr(args, "tool_names_file", None),
+            "claude": args.claude,
+            "claude_model": args.claude_model,
+            "claude_max_tools": args.claude_max_tools,
+            "fast": args.fast,
+            "probe_workers": args.probe_workers,
+        }
+
+        panel_lines = [
+            f"[bold cyan]mcpvenom v{__version__}[/bold cyan]  [dim]MCP Red Teaming & Security Scanner[/dim]",
+            f"Mode    : stdio",
+            f"Command : {args.stdio}",
+            f"Fast    : {args.fast}",
+            f"Workers : {args.probe_workers} probe thread(s)",
+            f"Started : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        ]
+        console.print(Panel("\n".join(panel_lines), title="mcpvenom", border_style="cyan"))
+
+        result = scan_stdio_target(
+            args.stdio,
+            timeout=args.timeout,
+            verbose=args.verbose,
+            probe_opts=probe_opts,
+        )
+        print_report([result], group_findings=args.group_findings)
+        if args.json_out:
+            write_json([result], args.json_out, console=console)
+        if any(f.severity in ("CRITICAL", "HIGH") for f in result.findings):
+            sys.exit(1)
+        sys.exit(0)
+
     if args.k8s_discover and not args.targets and not args.targets_file and not args.public_targets and not args.port_range:
         urls = []
     else:
@@ -46,7 +86,6 @@ def main():
             console.print(f"  [red]✗[/red] OIDC token fetch failed: {e}")
             sys.exit(1)
     elif not auth_token and urls and args.verbose:
-        # Auto-detect auth requirements on first target
         info = detect_auth_requirements(urls[0])
         if info.requires_auth:
             console.print(f"  [yellow]⚠[/yellow]  Target requires auth: {info.summary()}")
@@ -66,8 +105,12 @@ def main():
         f"Workers : {args.workers}",
         f"Timeout : {args.timeout}s",
         f"Verbose : {args.verbose}  Debug: {args.debug}",
+        f"Fast    : {args.fast}" if args.fast else "",
+        f"Probe⌿  : {args.probe_workers} thread(s)" if args.probe_workers > 1 else "",
+        f"Group   : {args.group_findings}" if args.group_findings else "",
         f"Started : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
     ]
+    panel_lines = [l for l in panel_lines if l]
     if args.baseline:
         panel_lines.append(f"Baseline: {args.baseline}")
     if args.save_baseline:
@@ -96,12 +139,16 @@ def main():
         "claude": args.claude,
         "claude_model": args.claude_model,
         "claude_max_tools": args.claude_max_tools,
+        "fast": args.fast,
+        "probe_workers": args.probe_workers,
     }
 
     if args.no_invoke:
         console.print("  [yellow]--no-invoke: behavioral probes disabled (static-only)[/yellow]")
     elif args.safe_mode:
         console.print("  [yellow]--safe-mode: skipping dangerous tool invocations[/yellow]")
+    if args.fast:
+        console.print("  [yellow]--fast: sampling top 5 tools, skipping heavy probes[/yellow]")
 
     if not args.no_k8s:
         run_k8s_checks(args.k8s_namespace, console=console)
@@ -229,7 +276,7 @@ def main():
                     )
         print_diff_report(diff_results, args.baseline, console=console)
 
-    print_report(results)
+    print_report(results, group_findings=args.group_findings)
 
     if args.save_baseline:
         save_baseline(results, args.save_baseline, console=console)

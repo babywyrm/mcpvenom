@@ -191,6 +191,35 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         "(one per line, # comments). Supplements the built-in list.",
     )
     p.add_argument(
+        "--stdio",
+        metavar="CMD",
+        help="Scan a local MCP server via stdin/stdout JSON-RPC. "
+        "Launch CMD as a subprocess and communicate over stdio. "
+        "E.g. --stdio 'npx -y @modelcontextprotocol/server-everything'",
+    )
+    p.add_argument(
+        "--fast",
+        action="store_true",
+        help="Fast scan: sample top 5 security-relevant tools, skip heavy "
+        "probes (input_sanitization, error_leakage, temporal_consistency, "
+        "ssrf_probe), cap probe workers at 2. Cuts LLM-backed scan time "
+        "from ~30min to ~2min.",
+    )
+    p.add_argument(
+        "--group-findings",
+        action="store_true",
+        help="Collapse similar findings by check/severity into compact rows "
+        "with affected-tool lists and counts.",
+    )
+    p.add_argument(
+        "--probe-workers",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Parallel deep behavioral probe threads (default: 1). "
+        "Higher values speed up deep probes but increase server load.",
+    )
+    p.add_argument(
         "--claude-max-tools",
         type=int,
         default=10,

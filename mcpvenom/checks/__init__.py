@@ -1,6 +1,8 @@
 """Security check registry and runner."""
 
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from mcpvenom.core.models import TargetResult
 from mcpvenom.checks.injection import (
@@ -48,6 +50,14 @@ from mcpvenom.checks.exfil_flow import check_exfil_flow
 from mcpvenom.checks.ssrf_probe import check_ssrf_probe
 from mcpvenom.checks.actuator_probe import check_actuator_probe
 
+# Checks that --fast mode skips (heavy, LLM-backed, or slow)
+FAST_SKIP_CHECKS = {
+    "input_sanitization",
+    "error_leakage",
+    "temporal_consistency",
+    "ssrf_probe",
+}
+
 
 def run_all_checks(
     session,
@@ -65,30 +75,46 @@ def run_all_checks(
     probes that actively interact with the server.
 
     probe_opts keys:
-      no_invoke  (bool)  — skip all tool-calling checks
-      safe_mode  (bool)  — skip invoking dangerous tools (delete, send, exec, write)
-      probe_calls (int)  — invocations per tool for deep rug pull (default 6)
+      no_invoke     (bool) — skip all tool-calling checks
+      safe_mode     (bool) — skip invoking dangerous tools
+      probe_calls   (int)  — invocations per tool for deep rug pull (default 6)
+      fast          (bool) — sample top 5 tools, skip heavy probes
+      probe_workers (int)  — parallel deep behavioral probe threads (default 1)
     """
     from mcpvenom.core.constants import SEV_COLOR
 
     opts = probe_opts or {}
     no_invoke = opts.get("no_invoke", False)
+    fast_mode = opts.get("fast", False)
+    probe_workers = opts.get("probe_workers", 1)
     _log = log or (lambda msg: None)
     if verbose:
         opts["_log"] = _log
+
+    # In fast mode: cap tools to top 5 security-relevant, force probe_workers=2 max
+    if fast_mode:
+        _original_tools = result.tools
+        result.tools = _pick_security_relevant(result.tools, 5)
+        if verbose:
+            _log(f"  [yellow]--fast: sampled {len(result.tools)}/{len(_original_tools)} security-relevant tools[/yellow]")
+        probe_workers = min(probe_workers or 2, 2)
+
     check_num = 0
     total_checks = 0
+    _findings_lock = threading.Lock()
 
     def _run(name, fn, *args, **kwargs):
         nonlocal check_num
-        check_num += 1
-        before = len(result.findings)
+        with _findings_lock:
+            check_num += 1
+            num = check_num
+        before_count = len(result.findings)
         if verbose:
-            _log(f"  [dim]  [{check_num}/{total_checks}][/dim] [white]▸ {name}[/white]")
+            _log(f"  [dim]  [{num}/{total_checks}][/dim] [white]▸ {name}[/white]")
         t0 = time.time()
         fn(*args, **kwargs)
         elapsed = time.time() - t0
-        new_findings = result.findings[before:]
+        new_findings = result.findings[before_count:]
         if verbose and new_findings:
             for f in new_findings:
                 color = SEV_COLOR.get(f.severity, "white")
@@ -100,9 +126,11 @@ def run_all_checks(
             _log(f"  [dim]    └─ {status}  ({elapsed:.2f}s)[/dim]")
 
     # Count total checks for progress display
-    total_checks = 17  # static
+    total_checks = 15  # static (exfil_flow counted separately below)
+    total_checks += 1  # exfil_flow
     if not no_invoke:
-        total_checks += 13  # behavioral + deep
+        deep_count = 10 if not fast_mode else (10 - len(FAST_SKIP_CHECKS))
+        total_checks += 3 + deep_count  # light behavioral + deep
     if base and sse_path:
         total_checks += 1
     if base:
@@ -126,7 +154,7 @@ def run_all_checks(
     _run("config_tampering", check_config_tampering, result)
     _run("webhook_persistence", check_webhook_persistence, result)
     _run("credential_in_schema", check_credential_in_schema, result)
-    _run("exfil_flow", check_exfil_flow, result)
+    _run("exfil_flow", check_exfil_flow, result, session=session, probe_opts=opts)
     if verbose:
         static_count = len(result.findings)
         _log(f"  [bold]  Static total: {static_count} finding(s)[/bold]")
@@ -142,16 +170,44 @@ def run_all_checks(
         # ── Deep behavioral probes (invoke tools, analyze responses) ───
         if verbose:
             _log("\n  [bold cyan]── Deep Behavioral Probes ──[/bold cyan]")
-        _run("deep_rug_pull", check_deep_rug_pull, session, result, probe_opts=opts)
-        _run("tool_response_injection", check_tool_response_injection, session, result, probe_opts=opts)
-        _run("input_sanitization", check_input_sanitization, session, result, probe_opts=opts)
-        _run("error_leakage", check_error_leakage, session, result, probe_opts=opts)
-        _run("temporal_consistency", check_temporal_consistency, session, result, probe_opts=opts)
-        _run("resource_poisoning", check_resource_poisoning, session, result)
-        _run("response_credentials", check_response_credentials, session, result, probe_opts=opts)
-        _run("ssrf_probe", check_ssrf_probe, session, result, probe_opts=opts)
-        _run("state_mutation", check_state_mutation, session, result)
-        _run("notification_abuse", check_notification_abuse, session, result)
+            if probe_workers > 1:
+                _log(f"  [dim]  (running with {probe_workers} parallel probe workers)[/dim]")
+
+        deep_checks: list[tuple[str, callable, tuple, dict]] = [
+            ("deep_rug_pull", check_deep_rug_pull, (session, result), {"probe_opts": opts}),
+            ("tool_response_injection", check_tool_response_injection, (session, result), {"probe_opts": opts}),
+            ("input_sanitization", check_input_sanitization, (session, result), {"probe_opts": opts}),
+            ("error_leakage", check_error_leakage, (session, result), {"probe_opts": opts}),
+            ("temporal_consistency", check_temporal_consistency, (session, result), {"probe_opts": opts}),
+            ("resource_poisoning", check_resource_poisoning, (session, result), {}),
+            ("response_credentials", check_response_credentials, (session, result), {"probe_opts": opts}),
+            ("ssrf_probe", check_ssrf_probe, (session, result), {"probe_opts": opts}),
+            ("state_mutation", check_state_mutation, (session, result), {}),
+            ("notification_abuse", check_notification_abuse, (session, result), {}),
+        ]
+
+        if fast_mode:
+            deep_checks = [
+                (name, fn, a, kw) for name, fn, a, kw in deep_checks
+                if name not in FAST_SKIP_CHECKS
+            ]
+            if verbose:
+                _log(f"  [yellow]--fast: skipping {', '.join(sorted(FAST_SKIP_CHECKS))}[/yellow]")
+
+        if probe_workers > 1:
+            with ThreadPoolExecutor(max_workers=probe_workers) as pool:
+                futures = {
+                    pool.submit(_run, name, fn, *a, **kw): name
+                    for name, fn, a, kw in deep_checks
+                }
+                for f in as_completed(futures):
+                    try:
+                        f.result()
+                    except Exception:
+                        pass
+        else:
+            for name, fn, a, kw in deep_checks:
+                _run(name, fn, *a, **kw)
 
         behavioral_count = len(result.findings) - static_count
         if verbose:
@@ -174,3 +230,38 @@ def run_all_checks(
     _run("attack_chains", check_attack_chains, result)
     if verbose:
         _log(f"\n  [bold green]  ✓ All {check_num} checks complete: {len(result.findings)} total finding(s)[/bold green]")
+
+
+def _pick_security_relevant(tools: list[dict], n: int) -> list[dict]:
+    """Select the top N most security-relevant tools for fast-mode scanning.
+
+    Prioritizes tools with: dangerous keywords in name/desc, URL params,
+    command/exec params, write/send semantics, and large schemas.
+    """
+    DANGER_KEYWORDS = {
+        "exec", "execute", "run", "shell", "command", "cmd", "eval",
+        "send", "email", "notify", "webhook", "upload", "write",
+        "delete", "query", "sql", "deploy", "fetch", "proxy",
+        "read", "file", "path", "transfer",
+    }
+
+    def score(tool: dict) -> int:
+        name = tool.get("name", "").lower()
+        desc = tool.get("description", "").lower()
+        combined = f"{name} {desc}"
+        props = tool.get("inputSchema", {}).get("properties", {})
+
+        s = 0
+        for kw in DANGER_KEYWORDS:
+            if kw in name:
+                s += 3
+            elif kw in desc:
+                s += 1
+        s += len(props)
+        for pname in props:
+            if any(k in pname.lower() for k in ("url", "path", "command", "code", "query")):
+                s += 5
+        return s
+
+    ranked = sorted(tools, key=score, reverse=True)
+    return ranked[:n]

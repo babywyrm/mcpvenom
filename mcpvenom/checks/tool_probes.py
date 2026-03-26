@@ -27,6 +27,7 @@ from mcpvenom.patterns.probes import (
     TEMPLATE_INJECTION_PROBES,
     TEMPLATE_INJECTION_PROBES_V2,
     SQL_INJECTION_PROBES,
+    ENCODING_BYPASS_PROBES,
     RESPONSE_INJECTION_PATTERNS,
     RESPONSE_EXFIL_PATTERNS,
     CROSS_TOOL_PATTERNS,
@@ -159,12 +160,48 @@ def _build_safe_args(tool: dict) -> dict:
     return args
 
 
-def _call_tool(session, name: str, args: dict, timeout: float = 10.0) -> dict | None:
-    """Call a tool via tools/call, swallowing exceptions."""
-    try:
-        return session.call("tools/call", {"name": name, "arguments": args}, timeout=timeout)
-    except Exception:
-        return None
+_latency_tracker: dict[str, list[float]] = {}
+
+
+def _call_tool(session, name: str, args: dict, timeout: float = 10.0, retries: int = 2) -> dict | None:
+    """Call a tool via tools/call with adaptive backoff and jitter.
+
+    Tracks per-tool latency to set progressive timeouts (up to 30s)
+    and retries with exponential backoff + jitter on failure.
+    """
+    import random
+
+    history = _latency_tracker.setdefault(name, [])
+    effective_timeout = timeout
+    if history:
+        avg = sum(history) / len(history)
+        effective_timeout = min(max(avg * 2.5, timeout), 30.0)
+
+    delay = 0.5
+    for attempt in range(retries + 1):
+        t0 = time.time()
+        try:
+            resp = session.call(
+                "tools/call",
+                {"name": name, "arguments": args},
+                timeout=effective_timeout,
+            )
+            elapsed = time.time() - t0
+            history.append(elapsed)
+            if len(history) > 10:
+                history.pop(0)
+            return resp
+        except Exception:
+            elapsed = time.time() - t0
+            history.append(elapsed)
+            if len(history) > 10:
+                history.pop(0)
+            if attempt < retries:
+                jitter = random.uniform(0, delay * 0.5)
+                time.sleep(delay + jitter)
+                delay = min(delay * 2, 8.0)
+                effective_timeout = min(effective_timeout * 1.5, 30.0)
+    return None
 
 
 def _response_text(resp: dict | None) -> str:
@@ -387,6 +424,22 @@ def check_input_sanitization(session, result: TargetResult, probe_opts: dict | N
                                 f"Blocklist bypass: '{interp_name}' executed in tool '{name}'",
                                 f"Interpreter '{interp_name}' not blocked — param '{pname}'",
                                 evidence=f"Sent: {interp_probe}\nGot: {text[:300]}",
+                            )
+                            break
+
+                # Encoding bypass probes: 9 techniques that evade blocklists
+                if any(kw in pname_lower for kw in ("command", "cmd", "exec", "code", "script", "expression", "query")):
+                    for enc_name, enc_payload in ENCODING_BYPASS_PROBES:
+                        test_args = {**base_args, pname: enc_payload}
+                        resp = _call_tool(session, name, test_args, timeout=8)
+                        text = _response_text(resp)
+                        if text and CANARY in text:
+                            result.add(
+                                "input_sanitization",
+                                "CRITICAL",
+                                f"Encoding bypass ({enc_name}): canary executed in tool '{name}'",
+                                f"Technique '{enc_name}' bypassed input filter — param '{pname}'",
+                                evidence=f"Sent: {enc_payload[:120]}\nGot: {text[:300]}",
                             )
                             break
 

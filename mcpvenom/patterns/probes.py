@@ -189,4 +189,31 @@ CREDENTIAL_CONTENT_PATTERNS = [
 # Input reflection — distinctive payload for detecting echo/reflection
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Encoding bypass probes — 9 techniques that commonly defeat blocklists
+# ---------------------------------------------------------------------------
+
+def _encode_bypass_probes(canary: str) -> list[tuple[str, str]]:
+    """Generate 9 encoding bypass variants for a canary payload."""
+    import base64
+    import urllib.parse
+
+    raw = f"echo {canary}"
+    return [
+        ("base64", base64.b64encode(raw.encode()).decode()),
+        ("hex", raw.encode().hex()),
+        ("double_url", urllib.parse.quote(urllib.parse.quote(raw))),
+        ("homoglyph", raw.replace("e", "\u0435").replace("o", "\u043e")),
+        ("null_byte", f"test\x00; {raw}"),
+        ("crlf", f"test\r\n{raw}"),
+        ("fullwidth", "".join(
+            chr(0xFEE0 + ord(c)) if 0x21 <= ord(c) <= 0x7E else c for c in raw
+        )),
+        ("concatenation", f"ec''ho {canary}"),
+        ("variable_expansion", f"${{IFS}}echo${{IFS}}{canary}"),
+    ]
+
+
+ENCODING_BYPASS_PROBES = _encode_bypass_probes(CANARY)
+
 REFLECTION_PAYLOAD = f"REFLECTION_PROBE_{CANARY}"

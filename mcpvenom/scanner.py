@@ -17,11 +17,90 @@ from rich.progress import (
 )
 
 from mcpvenom.core.models import TargetResult
-from mcpvenom.core.session import detect_transport, ToolServerSession
+from mcpvenom.core.session import detect_transport, StdioSession, ToolServerSession
 from mcpvenom.core.enumerator import enumerate_server
 from mcpvenom.checks import run_all_checks
 
 console = Console()
+
+
+def scan_stdio_target(
+    cmd: str,
+    timeout: float = 25.0,
+    verbose: bool = False,
+    probe_opts: dict | None = None,
+) -> TargetResult:
+    """Scan a local MCP server launched via stdin/stdout."""
+    label = f"stdio://{cmd}"
+    result = TargetResult(url=label)
+    t_start = time.time()
+
+    opts = probe_opts or {}
+    _log = console.print if verbose else lambda msg: None
+
+    console.print(f"\n[bold cyan]▶ {label}[/bold cyan]")
+    console.print(f"  [dim]Launching subprocess: {cmd}[/dim]")
+
+    try:
+        session = StdioSession(cmd, timeout=timeout)
+    except Exception as e:
+        console.print(f"  [red]✗[/red] Failed to launch: {e}")
+        result.transport = "stdio-error"
+        result.error = str(e)
+        result.timings["total"] = time.time() - t_start
+        return result
+
+    if not session.wait_ready(timeout=10.0):
+        console.print(f"  [red]✗[/red] Subprocess not ready (exited or timed out)")
+        result.transport = "stdio-error"
+        result.error = "Process not ready"
+        session.close()
+        result.timings["total"] = time.time() - t_start
+        return result
+
+    result.transport = "stdio"
+    console.print(f"  [green]✓[/green] Transport=stdio  pid={session._proc.pid}")
+
+    enumerate_server(session, result, verbose=verbose, log=_log)
+
+    if result.server_info:
+        si = result.server_info.get("serverInfo", {})
+        if si:
+            console.print(
+                f"  [dim]Server: {si.get('name', '?')} v{si.get('version', '?')}[/dim]"
+            )
+
+    console.print(
+        f"  [dim]Tools={len(result.tools)} "
+        f"Resources={len(result.resources)} "
+        f"Prompts={len(result.prompts)}[/dim]"
+    )
+
+    run_all_checks(
+        session,
+        result,
+        [],
+        verbose=verbose,
+        probe_opts=opts,
+        log=_log,
+    )
+
+    if opts.get("claude"):
+        from mcpvenom.checks.llm_analysis import run_llm_analysis
+        run_llm_analysis(
+            session, result,
+            probe_opts=opts,
+            model=opts.get("claude_model", "claude-sonnet-4-20250514"),
+            console=console,
+        )
+
+    session.close()
+    result.timings["total"] = time.time() - t_start
+    console.print(
+        f"  [dim]Done in {result.timings['total']:.1f}s  "
+        f"findings={len(result.findings)}  score={result.risk_score()}[/dim]"
+    )
+    return result
 
 
 def detect_cross_shadowing(results: list[TargetResult]):
