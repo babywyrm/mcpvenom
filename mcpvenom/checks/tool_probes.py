@@ -163,22 +163,32 @@ def _build_safe_args(tool: dict) -> dict:
 _latency_tracker: dict[str, list[float]] = {}
 
 
+def _is_stdio(session) -> bool:
+    return hasattr(session, "_proc")
+
+
 def _call_tool(session, name: str, args: dict, timeout: float = 10.0, retries: int = 2) -> dict | None:
     """Call a tool via tools/call with adaptive backoff and jitter.
 
-    Tracks per-tool latency to set progressive timeouts (up to 30s)
-    and retries with exponential backoff + jitter on failure.
+    Tracks per-tool latency to set progressive timeouts and retries with
+    exponential backoff + jitter on failure. Stdio sessions get a lower
+    timeout ceiling (15s) and fewer retries since high latency is inherent
+    to subprocess I/O, not a transient failure.
     """
     import random
 
+    stdio = _is_stdio(session)
+    max_timeout = 15.0 if stdio else 30.0
+    effective_retries = min(retries, 1) if stdio else retries
+
     history = _latency_tracker.setdefault(name, [])
     effective_timeout = timeout
-    if history:
+    if history and not stdio:
         avg = sum(history) / len(history)
-        effective_timeout = min(max(avg * 2.5, timeout), 30.0)
+        effective_timeout = min(max(avg * 2.5, timeout), max_timeout)
 
     delay = 0.5
-    for attempt in range(retries + 1):
+    for attempt in range(effective_retries + 1):
         t0 = time.time()
         try:
             resp = session.call(
@@ -196,11 +206,11 @@ def _call_tool(session, name: str, args: dict, timeout: float = 10.0, retries: i
             history.append(elapsed)
             if len(history) > 10:
                 history.pop(0)
-            if attempt < retries:
+            if attempt < effective_retries:
                 jitter = random.uniform(0, delay * 0.5)
                 time.sleep(delay + jitter)
                 delay = min(delay * 2, 8.0)
-                effective_timeout = min(effective_timeout * 1.5, 30.0)
+                effective_timeout = min(effective_timeout * 1.5, max_timeout)
     return None
 
 
@@ -330,21 +340,15 @@ def check_tool_response_injection(session, result: TargetResult, probe_opts: dic
                             evidence=text[:400],
                         )
 
-        # --- Input reflection detection ---
-        for tool in result.tools:
-            if not _should_invoke(tool, opts):
-                continue
-            name = tool.get("name", "")
+            # Input reflection — probe string params in the same pass
             props = tool.get("inputSchema", {}).get("properties", {})
-            base_args = _build_safe_args(tool)
-
             for pname, pdef in props.items():
                 if pdef.get("type") not in (None, "string"):
                     continue
-                probe_args = {**base_args, pname: REFLECTION_PAYLOAD}
-                resp = _call_tool(session, name, probe_args, timeout=8)
-                text = _response_text(resp)
-                if text and REFLECTION_PAYLOAD in text:
+                probe_args = {**args, pname: REFLECTION_PAYLOAD}
+                refl_resp = _call_tool(session, name, probe_args, timeout=8)
+                refl_text = _response_text(refl_resp)
+                if refl_text and REFLECTION_PAYLOAD in refl_text:
                     result.add(
                         "tool_response_injection",
                         "HIGH",
@@ -352,9 +356,9 @@ def check_tool_response_injection(session, result: TargetResult, probe_opts: dic
                         "User-controlled text appears verbatim in tool output — "
                         "indirect injection vector: attacker content can reach the LLM "
                         "through this tool's response",
-                        evidence=f"Sent: {REFLECTION_PAYLOAD}\nReflected in: {text[:300]}",
+                        evidence=f"Sent: {REFLECTION_PAYLOAD}\nReflected in: {refl_text[:300]}",
                     )
-                    break  # one reflection finding per tool is enough
+                    break
 
 
 # ---------------------------------------------------------------------------

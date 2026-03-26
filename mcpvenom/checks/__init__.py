@@ -59,6 +59,41 @@ FAST_SKIP_CHECKS = {
 }
 
 
+def _emit_duration_estimate(
+    n_tools: int,
+    session,
+    no_invoke: bool,
+    fast_mode: bool,
+    probe_workers: int,
+    _log,
+):
+    """Print a rough scan-time estimate so operators know what to expect."""
+    stdio = hasattr(session, "_proc") if session else False
+    avg_per_tool = 8.0 if stdio else 3.0
+    static_secs = 2.0
+    behavioral_secs = 3.0 if not no_invoke else 0.0
+
+    if no_invoke:
+        deep_secs = 0.0
+    else:
+        deep_checks = 10
+        if fast_mode:
+            deep_checks -= len(FAST_SKIP_CHECKS)
+        deep_secs = deep_checks * n_tools * avg_per_tool
+        if probe_workers > 1:
+            deep_secs /= min(probe_workers, n_tools or 1)
+
+    total_secs = static_secs + behavioral_secs + deep_secs
+    if total_secs < 60:
+        est = f"~{int(total_secs)}s"
+    else:
+        est = f"~{total_secs / 60:.0f}min"
+
+    transport = "stdio" if stdio else "HTTP"
+    mode = "fast" if fast_mode else "deep"
+    _log(f"  [bold]Estimated scan time: {est} ({n_tools} tools, {mode} mode, {transport} transport)[/bold]")
+
+
 def run_all_checks(
     session,
     result: TargetResult,
@@ -98,6 +133,11 @@ def run_all_checks(
         if verbose:
             _log(f"  [yellow]--fast: sampled {len(result.tools)}/{len(_original_tools)} security-relevant tools[/yellow]")
         probe_workers = min(probe_workers or 2, 2)
+
+    if verbose:
+        _emit_duration_estimate(
+            len(result.tools), session, no_invoke, fast_mode, probe_workers, _log,
+        )
 
     check_num = 0
     total_checks = 0

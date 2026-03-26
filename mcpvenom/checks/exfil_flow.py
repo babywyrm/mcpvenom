@@ -125,22 +125,26 @@ def check_exfil_flow(result: TargetResult, session=None, probe_opts: dict | None
             sink_name = sink.get("name", "")
 
             if sensitive_sources:
-                source_names = [s.get("name", "") for s in sensitive_sources]
-                result.add(
-                    "exfil_flow",
-                    "CRITICAL",
-                    f"Exfiltration path: sensitive data → '{sink_name}'",
-                    f"Sensitive sources: {source_names}. "
-                    f"Sink: '{sink_name}' ({sink.get('description', '')[:100]})",
-                )
+                real_sensitive = [s for s in sensitive_sources if s.get("name", "") != sink_name]
+                if real_sensitive:
+                    source_names = [s.get("name", "") for s in real_sensitive]
+                    result.add(
+                        "exfil_flow",
+                        "CRITICAL",
+                        f"Exfiltration path: sensitive data → '{sink_name}'",
+                        f"Sensitive sources: {source_names}. "
+                        f"Sink: '{sink_name}' ({sink.get('description', '')[:100]})",
+                    )
             elif sources:
-                source_names = [s.get("name", "") for s in sources[:5]]
-                result.add(
-                    "exfil_flow",
-                    "HIGH",
-                    f"Data exfiltration path: {len(sources)} source(s) → '{sink_name}'",
-                    f"Sources: {source_names}. Data read by source tools could be routed through sink.",
-                )
+                real_sources = [s for s in sources if s.get("name", "") != sink_name]
+                if real_sources:
+                    source_names = [s.get("name", "") for s in real_sources[:5]]
+                    result.add(
+                        "exfil_flow",
+                        "HIGH",
+                        f"Data exfiltration path: {len(real_sources)} source(s) → '{sink_name}'",
+                        f"Sources: {source_names}. Data read by source tools could be routed through sink.",
+                    )
 
         # Live verification: attempt source→sink canary transfer
         if session and not opts.get("no_invoke") and sources and sinks:
@@ -154,6 +158,8 @@ def check_exfil_flow(result: TargetResult, session=None, probe_opts: dict | None
                 canary = f"{EXFIL_CANARY}:{source_name[:20]}:{source_text[:30]}"
                 for sink in sinks[:3]:
                     sink_name = sink.get("name", "")
+                    if sink_name == source_name:
+                        continue
                     _log(f"    [dim]      {source_name} → {sink_name}[/dim]")
                     sent, resp_text = _try_sink_send(session, sink, canary)
                     if sent:

@@ -17,6 +17,14 @@ console = Console()
 _TOOL_NAME_RE = re.compile(r"'([^']+)'")
 
 
+def _short_target(url: str, max_len: int = 45) -> str:
+    """Truncate a target URL for table display."""
+    url = url.replace("http://", "")
+    if len(url) <= max_len:
+        return url
+    return url[:max_len - 1] + "\u2026"
+
+
 def _group_findings(findings: list[Finding]) -> list[dict]:
     """Collapse similar findings by (check, severity) into compact grouped rows.
 
@@ -82,7 +90,7 @@ def print_report(results: list[TargetResult], group_findings: bool = False):
             if len(r["tools"]) > 6:
                 tool_str += f" +{len(r['tools']) - 6}"
             table.add_row(
-                r["target"].replace("http://", ""),
+                _short_target(r["target"]),
                 r["check"],
                 Text(r["severity"], style=color),
                 str(r["count"]),
@@ -104,7 +112,7 @@ def print_report(results: list[TargetResult], group_findings: bool = False):
         for f in sorted_f:
             color = SEV_COLOR.get(f.severity, "white")
             table.add_row(
-                f.target.replace("http://", ""),
+                _short_target(f.target),
                 f.check,
                 Text(f.severity, style=color),
                 f.title,
@@ -133,7 +141,7 @@ def print_report(results: list[TargetResult], group_findings: bool = False):
             else "green"
         )
         pt.add_row(
-            r.url.replace("http://", ""),
+            _short_target(r.url),
             r.transport,
             str(len(r.tools)),
             str(len(r.findings)),

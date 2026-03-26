@@ -24,6 +24,24 @@ from mcpvenom.checks import run_all_checks
 console = Console()
 
 
+def _stdio_short_label(cmd: str) -> str:
+    """Extract a compact label from a stdio command string.
+
+    'npx -y github:yuniko-software/minecraft-mcp-server --host ...'
+      -> 'stdio://minecraft-mcp-server'
+    """
+    import re
+    parts = cmd.split()
+    for p in reversed(parts):
+        if p.startswith("-"):
+            continue
+        name = p.rsplit("/", 1)[-1]
+        name = re.sub(r"^@[^/]+/", "", name)
+        if name and name not in ("npx", "node", "python", "python3", "uv", "-y"):
+            return f"stdio://{name}"
+    return f"stdio://{parts[-1]}" if parts else "stdio://unknown"
+
+
 def scan_stdio_target(
     cmd: str,
     timeout: float = 25.0,
@@ -31,7 +49,7 @@ def scan_stdio_target(
     probe_opts: dict | None = None,
 ) -> TargetResult:
     """Scan a local MCP server launched via stdin/stdout."""
-    label = f"stdio://{cmd}"
+    label = _stdio_short_label(cmd)
     result = TargetResult(url=label)
     t_start = time.time()
 
