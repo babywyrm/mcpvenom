@@ -202,8 +202,8 @@ def run_all_checks(
     _run("webhook_persistence", check_webhook_persistence, result)
     _run("credential_in_schema", check_credential_in_schema, result)
     _run("exfil_flow", check_exfil_flow, result, session=session, probe_opts=opts)
+    static_count = len(result.findings)
     if verbose:
-        static_count = len(result.findings)
         _log(f"  [bold]  Static total: {static_count} finding(s)[/bold]")
 
     # ── Behavioral checks (light interaction — always run unless --no-invoke)
