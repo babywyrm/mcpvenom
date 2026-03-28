@@ -161,11 +161,19 @@ uv run pytest tests/test_your_check.py tests/test_checks_integration.py -v
 
 Add under `[Unreleased]` → `### Added`.
 
+## Workflow Integration
+
+This skill works with superpowers:
+- **test-driven-development** — write tests (step 5) BEFORE the check module (step 2). RED first.
+- **verification-before-completion** — run full suite before claiming done.
+- **systematic-debugging** — if tests fail, form hypothesis before changing code.
+
 ## Checklist
 
 - [ ] Patterns added to `rules.py` or `probes.py`
-- [ ] Check module created in `checks/`
+- [ ] Tests written FIRST and failing (TDD RED phase)
+- [ ] Check module created in `checks/` (TDD GREEN phase)
 - [ ] Imported and called in `checks/__init__.py`
 - [ ] Attack chains added to `constants.py` (if applicable)
-- [ ] Tests written and passing
+- [ ] Full test suite passing: `uv run pytest tests/ -v`
 - [ ] CHANGELOG updated

@@ -45,6 +45,14 @@ uv run pytest tests/ -v -s
 | `test_supply_chain.py` | Supply chain check | No |
 | `test_checks_integration.py` | Cross-check integration | No |
 | `test_k8s.py` | K8s checks and discovery | No |
+| `test_fast_sampling.py` | Tool scoring and sampling | No |
+| `test_webhook_persistence.py` | Webhook persistence check | No |
+| `test_response_credentials.py` | Response credential check | No |
+| `test_exfil_flow.py` | Exfil flow check | No |
+| `test_config_tampering.py` | Config tampering check | No |
+| `test_credential_in_schema.py` | Schema credential check | No |
+| `test_ssrf_probe.py` | SSRF probe check | No |
+| `test_actuator_probe.py` | Actuator probe check | No |
 | `test_public_targets.py` | Live public MCP servers | Yes (`MCP_PUBLIC_TARGETS=1`) |
 
 ## Interpreting Failures
@@ -52,7 +60,7 @@ uv run pytest tests/ -v -s
 ### Import errors
 Package not installed. Fix:
 ```bash
-cd ~/mcprowler && uv pip install -e ".[dev]"
+cd ~/mcpnuke && uv sync --all-extras
 # Or just re-run quickstart:
 ./quickstart.sh --skip-tests
 ```
@@ -74,4 +82,10 @@ Always re-run the full suite before committing:
 uv run pytest tests/ -v --tb=short
 ```
 
-Expected: 115 passed, 36 skipped, 0 failed.
+Expected: 163+ passed, 36 skipped, 0 failed.
+
+## Superpowers Integration
+
+- **verification-before-completion** — always run the full suite before claiming work is done
+- **systematic-debugging** — if a test fails, read the error, form a hypothesis, verify before fixing
+- **test-driven-development** — when adding new checks, write tests FIRST

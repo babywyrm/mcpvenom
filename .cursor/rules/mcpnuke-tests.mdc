@@ -1,0 +1,56 @@
+---
+description: Test conventions for mcpnuke — enforces TDD workflow
+globs: tests/**/*.py
+alwaysApply: false
+---
+
+# mcpnuke Test Conventions
+
+## TDD Workflow (superpowers: test-driven-development)
+
+1. **RED** — Write the failing test first. Run it. Watch it fail.
+2. **GREEN** — Write the minimal code to make it pass. Run it. Watch it pass.
+3. **REFACTOR** — Clean up. Run tests again. Still green.
+
+Never write implementation before the test exists.
+
+## Test Structure
+
+```python
+"""Tests for <check_name>."""
+from mcpnuke.core.models import TargetResult
+from mcpnuke.checks.<module> import check_<name>
+
+
+def test_<name>_positive(result_with_tools):
+    r = result_with_tools([{"name": "vuln_tool", "description": "...", "inputSchema": {}}])
+    check_<name>(r)
+    assert any(f.check == "<name>" for f in r.findings)
+
+
+def test_<name>_clean(result_with_tools):
+    r = result_with_tools([{"name": "safe_tool", "description": "Nothing here", "inputSchema": {}}])
+    check_<name>(r)
+    assert not any(f.check == "<name>" for f in r.findings)
+
+
+def test_<name>_timing(result_with_tools):
+    r = result_with_tools([{"name": "x", "description": "y", "inputSchema": {}}])
+    check_<name>(r)
+    assert "<name>" in r.timings
+```
+
+## Running Tests
+
+```bash
+uv run pytest tests/ -v              # Full suite
+uv run pytest tests/test_foo.py -v   # Single file
+uv run pytest tests/ -v -x           # Stop on first failure
+```
+
+## Verification (superpowers: verification-before-completion)
+
+Before claiming work is done, run and confirm:
+- `uv run pytest tests/ -v` — 163+ passed, 36 skipped, 0 failed
+- No import errors or deprecation warnings
+- New tests cover positive, negative, and timing

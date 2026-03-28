@@ -48,7 +48,10 @@ def test_your_patterns_no_false_positive():
     assert len(matches) == 0
 ```
 
-### 3. Run tests
+### 3. Run tests (TDD: write tests FIRST, then patterns)
+
+Follow superpowers test-driven-development: write the test assertions before
+adding patterns to `rules.py`. Watch them fail (RED), then add patterns (GREEN).
 
 ```bash
 uv run pytest tests/test_patterns.py -v

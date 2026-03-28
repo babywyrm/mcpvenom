@@ -1,0 +1,62 @@
+---
+description: Core mcpnuke development standards and superpowers workflow integration
+alwaysApply: true
+---
+
+# mcpnuke Development Standards
+
+## Project Identity
+
+mcpnuke is an MCP red teaming and security scanner. Version 6.0.0. Python 3.11+.
+Package manager: `uv`. Test runner: `uv run pytest tests/ -v`.
+
+## Superpowers Workflow (mandatory)
+
+All development on mcpnuke follows the superpowers skills framework:
+
+1. **brainstorming** before any new feature, check, or transport
+2. **writing-plans** before multi-step implementation work
+3. **test-driven-development** for all check modules and pattern changes — RED-GREEN-REFACTOR, no exceptions
+4. **systematic-debugging** for any test failure or scan anomaly — form hypothesis before changing code
+5. **verification-before-completion** before claiming anything is done — run `uv run pytest tests/ -v` and confirm output
+6. **requesting-code-review** after completing a feature branch
+
+## Code Conventions
+
+- Strong typing throughout: use `dict`, `list`, `frozenset`, `int`, `str` type hints on all functions
+- Module-level constants: `UPPER_SNAKE_CASE`, typed explicitly (e.g. `_NAME_MULTIPLIER: int = 3`)
+- Check functions signature: `check_name(result: TargetResult)` for static, `check_name(session, result: TargetResult, probe_opts: dict | None = None)` for behavioral
+- Every check wrapped in `with time_check("check_name", result):`
+- Findings via `result.add(check_name, severity, title, detail, evidence=...)`
+- Severity levels: CRITICAL, HIGH, MEDIUM, LOW
+
+## Testing Requirements
+
+- Every new check needs a dedicated `tests/test_<check_name>.py`
+- Minimum 3 tests per check: positive detection, clean/negative, timing recorded
+- Use `conftest.py` fixtures: `result_with_tools([{...}])`
+- Full suite must pass before any commit: 163+ passed, 36 skipped, 0 failed
+- DVMCP live tests gated behind `DVMCP_LIVE=1`
+
+## Architecture Quick Reference
+
+```
+mcpnuke/checks/__init__.py    — orchestrator, _pick_security_relevant, run_all_checks
+mcpnuke/checks/<name>.py      — individual check modules
+mcpnuke/patterns/rules.py     — static regex pattern sets
+mcpnuke/patterns/probes.py    — behavioral probe payloads and response analysis
+mcpnuke/core/session.py       — transport detection and session classes
+mcpnuke/core/models.py        — Finding, TargetResult dataclasses
+mcpnuke/core/constants.py     — severity weights, attack chain patterns
+mcpnuke/scanner.py            — parallel scan orchestration
+mcpnuke/__main__.py           — CLI entry point
+```
+
+## Project-Specific Skills
+
+Use mcpnuke skills for domain-specific tasks:
+- `mcpnuke-add-check` — end-to-end new security check
+- `mcpnuke-add-patterns` — new regex detection patterns
+- `mcpnuke-add-transport` — new transport type
+- `mcpnuke-extend-dvmcp` — new DVMCP challenge tests
+- `mcpnuke-run-tests` — run and interpret test suite
