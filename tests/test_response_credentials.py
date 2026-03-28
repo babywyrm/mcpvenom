@@ -2,8 +2,8 @@
 
 import pytest
 
-from mcpvenom.core.models import TargetResult
-from mcpvenom.checks.response_credentials import check_response_credentials
+from mcpnuke.core.models import TargetResult
+from mcpnuke.checks.response_credentials import check_response_credentials
 
 
 class FakeSession:

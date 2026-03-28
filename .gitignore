@@ -21,7 +21,7 @@ htmlcov/
 .nox/
 
 *.json
-!mcpvenom/data/*.json
+!mcpnuke/data/*.json
 
 .mypy_cache/
 .ruff_cache/

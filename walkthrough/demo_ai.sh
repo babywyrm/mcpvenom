@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# mcpvenom AI Demo — Claude-powered MCP security analysis
+# mcpnuke AI Demo — Claude-powered MCP security analysis
 # Usage: ./walkthrough/demo_ai.sh [--skip-setup] [--opus] [--no-cleanup]
 #
 # Requires: ANTHROPIC_API_KEY env var
@@ -23,7 +23,7 @@ for arg in "$@"; do
         -h|--help)
             echo "Usage: ./walkthrough/demo_ai.sh [--skip-setup] [--opus] [--no-cleanup]"
             echo ""
-            echo "Runs mcpvenom with Claude AI analysis against DVMCP challenges."
+            echo "Runs mcpnuke with Claude AI analysis against DVMCP challenges."
             echo "Requires: ANTHROPIC_API_KEY env var, uv, Docker"
             echo ""
             echo "  --skip-setup   Skip install and DVMCP Docker build"
@@ -50,7 +50,7 @@ fail()    { echo -e "  ${RED}✗${NC} $1"; exit 1; }
 
 echo -e "${BOLD}"
 echo "  ┌─────────────────────────────────────────────┐"
-echo "  │  mcpvenom AI Demo                           │"
+echo "  │  mcpnuke AI Demo                           │"
 echo "  │  Claude-Powered MCP Security Analysis        │"
 echo "  │                                              │"
 echo "  │  Deterministic checks + LLM reasoning.       │"
@@ -80,13 +80,13 @@ if [ "$SKIP_SETUP" = false ]; then
     ok "Docker running"
 
     if [ ! -f "$SCAN" ] || [ ! -d "$PROJECT_DIR/.venv" ]; then
-        explain "Installing mcpvenom..."
+        explain "Installing mcpnuke..."
         cd "$PROJECT_DIR" && ./quickstart.sh --skip-tests 2>&1 | tail -3
     fi
 
     # Ensure anthropic SDK is installed
     cd "$PROJECT_DIR" && uv pip install -e ".[ai]" 2>&1 | tail -1
-    ok "mcpvenom + AI dependencies installed"
+    ok "mcpnuke + AI dependencies installed"
 
     if docker ps --format '{{.Names}}' | grep -q '^dvmcp$'; then
         ok "DVMCP already running"

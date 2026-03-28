@@ -1,1 +1,1 @@
-"""mcpvenom test suite."""
+"""mcpnuke test suite."""

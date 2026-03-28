@@ -2,24 +2,24 @@
 
 import pytest
 
-from mcpvenom.cli import parse_args
-from mcpvenom.k8s.discovery import (
+from mcpnuke.cli import parse_args
+from mcpnuke.k8s.discovery import (
     DiscoveredEndpoint,
     discover_services,
     _get_sa_token,
 )
-from mcpvenom.k8s.scanner import (
+from mcpnuke.k8s.scanner import (
     GLOBAL_K8S_FINDINGS,
     _check_pod_security,
     _check_configmap_leaks,
     _check_helm_version_drift,
     _flatten_values,
 )
-from mcpvenom.k8s.fingerprint import (
+from mcpnuke.k8s.fingerprint import (
     _detect_framework,
     ServiceFingerprint,
 )
-from mcpvenom.core.models import Finding
+from mcpnuke.core.models import Finding
 
 
 def test_discover_services_no_sa_token():

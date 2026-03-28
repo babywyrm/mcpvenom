@@ -2,8 +2,8 @@
 
 import pytest
 
-from mcpvenom.core.models import TargetResult
-from mcpvenom.checks.rate_limit import check_rate_limit
+from mcpnuke.core.models import TargetResult
+from mcpnuke.checks.rate_limit import check_rate_limit
 
 
 def test_rate_limit_clean_tool(result_with_tools):

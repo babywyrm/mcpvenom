@@ -1,8 +1,8 @@
 """Tests for webhook_persistence check."""
 
 import pytest
-from mcpvenom.core.models import TargetResult
-from mcpvenom.checks.webhook_persistence import check_webhook_persistence
+from mcpnuke.core.models import TargetResult
+from mcpnuke.checks.webhook_persistence import check_webhook_persistence
 
 
 def _make(tools):

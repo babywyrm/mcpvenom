@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# mcpvenom quickstart — sets up venv, installs deps, runs tests, shows usage
+# mcpnuke quickstart — sets up venv, installs deps, runs tests, shows usage
 # Usage: ./quickstart.sh [--skip-tests] [--with-dvmcp]
 
 SKIP_TESTS=false
@@ -42,7 +42,7 @@ fail()   { echo -e "  ${RED}✗${NC} $1"; exit 1; }
 
 echo -e "${BOLD}"
 echo "  ┌──────────────────────────────────────┐"
-echo "  │  mcpvenom — quickstart             │"
+echo "  │  mcpnuke — quickstart             │"
 echo "  │  MCP Red Teaming & Security Scanner  │"
 echo "  └──────────────────────────────────────┘"
 echo -e "${NC}"
@@ -104,16 +104,16 @@ fi
 source .venv/bin/activate
 ok "Activated .venv ($(python --version))"
 
-# ── Install mcpvenom ───────────────────────────────────────────────────
+# ── Install mcpnuke ───────────────────────────────────────────────────
 
-banner "Installing mcpvenom + all dependencies"
+banner "Installing mcpnuke + all dependencies"
 
 if [ "$PKG_MGR" = "uv" ]; then
     uv sync --all-extras 2>&1 | tail -5
-    ok "mcpvenom installed (uv sync --all-extras)"
+    ok "mcpnuke installed (uv sync --all-extras)"
 else
     pip install -e ".[dev,ai,k8s]" 2>&1 | tail -3
-    ok "mcpvenom installed (pip editable)"
+    ok "mcpnuke installed (pip editable)"
 fi
 
 # Verify CLI entry point
@@ -166,7 +166,7 @@ echo -e "  ${BOLD}Quick commands (no activation needed):${NC}"
 echo ""
 echo -e "  ${GREEN}# Scan a target${NC}"
 echo "  ./scan --targets http://localhost:9090"
-echo "  uv run mcpvenom --targets http://localhost:9090"
+echo "  uv run mcpnuke --targets http://localhost:9090"
 echo ""
 echo -e "  ${GREEN}# Scan DVMCP challenges (ports 9001-9010)${NC}"
 echo "  ./scan --port-range localhost:9001-9010 --verbose"

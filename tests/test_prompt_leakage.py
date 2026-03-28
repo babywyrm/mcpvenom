@@ -2,8 +2,8 @@
 
 import pytest
 
-from mcpvenom.core.models import TargetResult
-from mcpvenom.checks.prompt_leakage import check_prompt_leakage
+from mcpnuke.core.models import TargetResult
+from mcpnuke.checks.prompt_leakage import check_prompt_leakage
 
 
 def test_prompt_leakage_clean_tool(result_with_tools):

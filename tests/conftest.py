@@ -1,11 +1,11 @@
-"""Pytest fixtures for mcpvenom tests."""
+"""Pytest fixtures for mcpnuke tests."""
 
 import sys
 from pathlib import Path
 
 import pytest
 
-# Ensure mcpvenom is importable (run from project root or mcpvenom/)
+# Ensure mcpnuke is importable (run from project root or mcpnuke/)
 _root = Path(__file__).resolve().parent.parent
 if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
@@ -14,7 +14,7 @@ if str(_root) not in sys.path:
 @pytest.fixture
 def target_result():
     """Create a TargetResult with sample tools for testing checks."""
-    from mcpvenom.core.models import TargetResult
+    from mcpnuke.core.models import TargetResult
 
     r = TargetResult(url="http://localhost:9001/sse")
     r.tools = [
@@ -30,7 +30,7 @@ def target_result():
 @pytest.fixture
 def result_with_tools():
     """TargetResult factory that accepts tools list."""
-    from mcpvenom.core.models import TargetResult
+    from mcpnuke.core.models import TargetResult
 
     def _make(tools: list, url: str = "http://localhost:9001/sse"):
         r = TargetResult(url=url)

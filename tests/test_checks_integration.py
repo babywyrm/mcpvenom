@@ -2,10 +2,10 @@
 
 import pytest
 
-from mcpvenom.core.models import TargetResult
-from mcpvenom.checks.rate_limit import check_rate_limit
-from mcpvenom.checks.prompt_leakage import check_prompt_leakage
-from mcpvenom.checks.supply_chain import check_supply_chain
+from mcpnuke.core.models import TargetResult
+from mcpnuke.checks.rate_limit import check_rate_limit
+from mcpnuke.checks.prompt_leakage import check_prompt_leakage
+from mcpnuke.checks.supply_chain import check_supply_chain
 
 
 def test_new_checks_fire_on_dangerous_tool():

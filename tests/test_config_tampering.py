@@ -1,8 +1,8 @@
 """Tests for config_tampering check."""
 
 import pytest
-from mcpvenom.core.models import TargetResult
-from mcpvenom.checks.config_tampering import check_config_tampering
+from mcpnuke.core.models import TargetResult
+from mcpnuke.checks.config_tampering import check_config_tampering
 
 
 def _make(tools):

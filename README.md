@@ -1,4 +1,4 @@
-# mcpvenom
+# mcpnuke
 
 **MCP Red Teaming & Security Scanner**
 
@@ -22,18 +22,18 @@ for training, or point at any MCP server in dev/staging/prod.
 
 **Quickstart (recommended):**
 ```bash
-git clone https://github.com/babywyrm/mcpvenom.git && cd mcpvenom
+git clone https://github.com/babywyrm/mcpnuke.git && cd mcpnuke
 ./quickstart.sh
 ```
 
 This creates a `.venv`, installs all extras (dev, ai, k8s), runs tests, and
-prints usage. After that, `./scan` and `uv run mcpvenom` just work — no
+prints usage. After that, `./scan` and `uv run mcpnuke` just work — no
 activation needed.
 
 **uv (manual):**
 ```bash
 uv sync --all-extras
-uv run mcpvenom --help
+uv run mcpnuke --help
 ```
 
 No `source .venv/bin/activate` needed — `uv run` finds the project venv automatically.
@@ -48,14 +48,14 @@ pip install -e ".[dev,ai,k8s]"
 
 **From PyPI** (coming soon):
 ```bash
-uv pip install mcpvenom
+uv pip install mcpnuke
 ```
 
 ---
 
 ## Quick Start
 
-**New to mcpvenom?** Try the **[DVMCP Walkthrough](walkthrough/README.md)** --
+**New to mcpnuke?** Try the **[DVMCP Walkthrough](walkthrough/README.md)** --
 a hands-on guide that scans 10 vulnerable MCP servers and explains every finding.
 Or run `./walkthrough/demo.sh` for the fully automated version.
 
@@ -100,8 +100,8 @@ Or run `./walkthrough/demo.sh` for the fully automated version.
 uv run pytest tests/ -v
 ```
 
-All `./scan` commands also work as `uv run mcpvenom` (no activation needed),
-`mcpvenom` (with venv activated), or `.venv/bin/mcpvenom`.
+All `./scan` commands also work as `uv run mcpnuke` (no activation needed),
+`mcpnuke` (with venv activated), or `.venv/bin/mcpnuke`.
 
 ---
 
@@ -310,7 +310,7 @@ uv pip install -e ".[ai]"    # or: pip install anthropic
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
-If `--claude` is used without the package or API key, mcpvenom exits immediately
+If `--claude` is used without the package or API key, mcpnuke exits immediately
 with a clear error message instead of running the full scan first.
 
 **Usage:**
@@ -325,7 +325,7 @@ with a clear error message instead of running the full scan first.
 ./scan --targets http://localhost:9090 --fast --claude --verbose
 ```
 
-mcpvenom uses a three-layer analysis architecture. Each layer catches what
+mcpnuke uses a three-layer analysis architecture. Each layer catches what
 the previous one can't:
 
 ```
@@ -445,7 +445,7 @@ uv run pytest tests/ -v -x
 
 ## Kubernetes Deployment
 
-Deploy mcpvenom as a K8s Job to scan cluster-internal MCP services and
+Deploy mcpnuke as a K8s Job to scan cluster-internal MCP services and
 audit the Kubernetes posture from inside.
 
 ### Clusters with many MCPs
@@ -457,28 +457,28 @@ When a cluster has many services (dozens or hundreds of potential MCP endpoints)
 - **Cap endpoints** — Limit how many MCPs are scanned: `--k8s-max-endpoints 50`.
   Annotation-sourced endpoints are kept first; then probed; then port-match.
 - **Discover-only triage** — List endpoints without running full MCP scans:
-  `mcpvenom --k8s-discover --k8s-discover-only --json endpoints.json`
+  `mcpnuke --k8s-discover --k8s-discover-only --json endpoints.json`
   to export a URL list for triage or splitting across jobs.
 - **Service fingerprinting** — Uses the same worker count for parallel HTTP
   probes when enumerating frameworks and exposed actuator/debug paths.
 
-> **Note:** Use `mcpvenom` (not `./scan`) in K8s manifests — inside the
+> **Note:** Use `mcpnuke` (not `./scan`) in K8s manifests — inside the
 > container the package is installed globally.
 
 ### Quick deploy
 
 ```bash
 # Build the image
-docker build -f mcpvenom/k8s/Dockerfile -t mcpvenom:latest .
+docker build -f mcpnuke/k8s/Dockerfile -t mcpnuke:latest .
 
 # Deploy (read-only cluster access)
-kubectl apply -k mcpvenom/k8s/manifests/
+kubectl apply -k mcpnuke/k8s/manifests/
 
 # Optional: enable full RBAC auditing (SA blast radius mapping)
-kubectl apply -f mcpvenom/k8s/manifests/rbac-impersonate.yaml
+kubectl apply -f mcpnuke/k8s/manifests/rbac-impersonate.yaml
 
 # Check results
-kubectl logs -n mcpvenom -l app.kubernetes.io/name=mcpvenom
+kubectl logs -n mcpnuke -l app.kubernetes.io/name=mcpnuke
 ```
 
 > **Note:** The base deployment grants read-only access to services, pods,
@@ -508,7 +508,7 @@ kubectl logs -n mcpvenom -l app.kubernetes.io/name=mcpvenom
 Use the CronJob manifest for periodic auditing:
 
 ```bash
-kubectl apply -f mcpvenom/k8s/manifests/cronjob.yaml
+kubectl apply -f mcpnuke/k8s/manifests/cronjob.yaml
 ```
 
 Default schedule: every 6 hours. Edit the `spec.schedule` field to change.
@@ -537,9 +537,9 @@ args:
 .
 ├── quickstart.sh              # One-command setup (venv + install + tests)
 ├── scan                       # Zero-config runner (no venv activation needed)
-├── mcpvenom/                # Python package
+├── mcpnuke/                # Python package
 │   ├── __init__.py            # Version, package docstring
-│   ├── __main__.py            # Entry point (python -m mcpvenom)
+│   ├── __main__.py            # Entry point (python -m mcpnuke)
 │   ├── cli.py                 # Argument parsing
 │   ├── scanner.py             # Scan orchestration, parallel execution, cross-target analysis
 │   ├── diff.py                # Differential scanning (baseline save/load/compare)

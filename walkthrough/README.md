@@ -1,6 +1,6 @@
-# mcpvenom DVMCP Walkthrough
+# mcpnuke DVMCP Walkthrough
 
-A hands-on guide to MCP security scanning using mcpvenom against the
+A hands-on guide to MCP security scanning using mcpnuke against the
 [Damn Vulnerable MCP Server](https://github.com/harishsg993010/damn-vulnerable-MCP-server) (DVMCP).
 
 DVMCP provides 10 deliberately vulnerable MCP servers, each demonstrating a
@@ -23,7 +23,7 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ./walkthrough/demo_ai.sh --opus    # Opus (deepest analysis)
 ```
 
-`demo.sh` handles everything: installs mcpvenom, starts DVMCP via Docker,
+`demo.sh` handles everything: installs mcpnuke, starts DVMCP via Docker,
 runs progressive scans with annotations, and offers cleanup at the end.
 `demo_ai.sh` does the same but adds Claude analysis — showing the difference
 between deterministic and AI-powered findings side by side.
@@ -31,7 +31,7 @@ between deterministic and AI-powered findings side by side.
 **Manual setup:**
 
 ```bash
-# 1. Install mcpvenom
+# 1. Install mcpnuke
 ./quickstart.sh --skip-tests
 
 # 2. Start DVMCP (Docker required)
@@ -56,7 +56,7 @@ docker run -d --name dvmcp -p 9001-9010:9001-9010 dvmcp
 
 ## Understanding Scan Modes
 
-mcpvenom has three scan modes. This walkthrough starts with the safest and
+mcpnuke has three scan modes. This walkthrough starts with the safest and
 progresses to more active probing.
 
 | Mode | Flag | What it does | When to use |
@@ -76,7 +76,7 @@ Challenge 1 runs a basic MCP server with a `get_user_info` tool and an
 ./scan --targets http://localhost:9001/sse --no-invoke
 ```
 
-### What mcpvenom finds
+### What mcpnuke finds
 
 | Check | Severity | What it means |
 |-------|----------|--------------|
@@ -125,7 +125,7 @@ The server is advertising arbitrary code execution as a feature.
 ### Static checks catch what tools SAY they can do
 
 These findings come from analyzing tool names, descriptions, and schemas --
-mcpvenom never called the tools. Static analysis is fast, safe, and catches
+mcpnuke never called the tools. Static analysis is fast, safe, and catches
 the most obvious issues.
 
 ### Taxonomy mapping
@@ -137,7 +137,7 @@ the most obvious issues.
 
 ## Step 3: Behavioral Probes — Challenges 4, 8
 
-Switch from `--no-invoke` to `--safe-mode` to let mcpvenom actually call
+Switch from `--no-invoke` to `--safe-mode` to let mcpnuke actually call
 tools (skipping dangerous ones like `execute_command`).
 
 ```bash
@@ -146,11 +146,11 @@ tools (skipping dangerous ones like `execute_command`).
 
 ### What behavioral probes find that static misses
 
-**`deep_rug_pull`** -- mcpvenom snapshots the tool list, calls each tool
+**`deep_rug_pull`** -- mcpnuke snapshots the tool list, calls each tool
 multiple times, then re-snapshots. If the tool list, descriptions, or schemas
 changed, it's a rug pull. Challenge 4 changes tool behavior after N calls.
 
-**`input_sanitization`** -- mcpvenom sends injection probes through string
+**`input_sanitization`** -- mcpnuke sends injection probes through string
 parameters: path traversal (`../../../etc/hostname`), command injection
 (`test; echo CANARY`), template injection (`{{1333*7}}`), and interpreter
 bypass (`perl -e 'print "CANARY"'`). If the canary appears in the response,
@@ -349,7 +349,7 @@ Each DVMCP challenge maps to the
 [MCP Red Team Playbook](https://github.com/babywyrm/sysadmin/tree/master/mcp/redteam)
 threat taxonomy:
 
-| Challenge | Port | Taxonomy ID | Category | mcpvenom Checks |
+| Challenge | Port | Taxonomy ID | Category | mcpnuke Checks |
 |-----------|------|-------------|----------|----------------|
 | 1 | 9001 | MCP-T01 | Direct Prompt Injection | `prompt_injection`, `schema_risk` |
 | 2 | 9002 | MCP-T02 | Tool Poisoning | `tool_poisoning`, `excessive_permissions`, `code_execution` |
@@ -364,7 +364,7 @@ threat taxonomy:
 
 ### Full taxonomy (MCP-T01 through MCP-T14)
 
-| ID | Category | Covered by mcpvenom |
+| ID | Category | Covered by mcpnuke |
 |----|----------|-------------------|
 | MCP-T01 | Direct Prompt Injection | `prompt_injection` |
 | MCP-T02 | Indirect Prompt Injection | `indirect_injection`, `tool_poisoning`, `resource_poisoning` |
@@ -418,7 +418,7 @@ Install the AI dependency: `uv pip install -e ".[ai]"`
 - **Authenticated targets**: `./scan --targets URL --oidc-url KEYCLOAK_URL --client-id ID --client-secret SECRET`
 - **Add to CI**: `./scan --targets URL --json report.json` (exits 1 on CRITICAL/HIGH)
 - **Run the test suite**: `uv run pytest tests/ -v`
-- **Contribute new checks**: see `.cursor/skills/mcpvenom-add-check/`
+- **Contribute new checks**: see `.cursor/skills/mcpnuke-add-check/`
 
 ---
 

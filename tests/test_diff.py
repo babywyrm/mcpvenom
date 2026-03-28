@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from mcpvenom.core.models import TargetResult
-from mcpvenom.diff import (
+from mcpnuke.core.models import TargetResult
+from mcpnuke.diff import (
     diff_against_baseline,
     load_baseline,
     save_baseline,
@@ -150,7 +150,7 @@ def test_load_baseline_nonexistent():
 
 def test_print_diff_report_no_crash():
     """print_diff_report should not crash."""
-    from mcpvenom.diff import print_diff_report
+    from mcpnuke.diff import print_diff_report
     from rich.console import Console
 
     diff = DiffResult(url="http://localhost:9001")

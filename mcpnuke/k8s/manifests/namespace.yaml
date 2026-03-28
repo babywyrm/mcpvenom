@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcpnuke
+  labels:
+    app.kubernetes.io/name: mcpnuke
+    app.kubernetes.io/part-of: agentsmith

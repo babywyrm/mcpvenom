@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# mcpvenom DVMCP demo — zero to findings in 60 seconds
+# mcpnuke DVMCP demo — zero to findings in 60 seconds
 # Usage: ./walkthrough/demo.sh [--skip-setup] [--no-cleanup]
 
 SKIP_SETUP=false
@@ -17,10 +17,10 @@ for arg in "$@"; do
         -h|--help)
             echo "Usage: ./walkthrough/demo.sh [--skip-setup] [--no-cleanup]"
             echo ""
-            echo "Runs mcpvenom against all 10 DVMCP challenges with annotated output."
+            echo "Runs mcpnuke against all 10 DVMCP challenges with annotated output."
             echo "Requires: uv, Docker"
             echo ""
-            echo "  --skip-setup   Skip mcpvenom install and DVMCP Docker build"
+            echo "  --skip-setup   Skip mcpnuke install and DVMCP Docker build"
             echo "  --no-cleanup   Leave DVMCP container running after demo"
             exit 0
             ;;
@@ -43,11 +43,11 @@ fail()    { echo -e "  ${RED}✗${NC} $1"; exit 1; }
 
 echo -e "${BOLD}"
 echo "  ┌─────────────────────────────────────────────┐"
-echo "  │  mcpvenom DVMCP Demo                        │"
+echo "  │  mcpnuke DVMCP Demo                        │"
 echo "  │  MCP Red Teaming — Live Walkthrough         │"
 echo "  │                                             │"
 echo "  │  10 vulnerable MCP servers. 1 scanner.      │"
-echo "  │  See what mcpvenom finds and why it matters.│"
+echo "  │  See what mcpnuke finds and why it matters.│"
 echo "  └─────────────────────────────────────────────┘"
 echo -e "${NC}"
 
@@ -65,12 +65,12 @@ if [ "$SKIP_SETUP" = false ]; then
     docker info &>/dev/null 2>&1 || fail "Docker daemon not running"
     ok "Docker running"
 
-    # Install mcpvenom if needed
+    # Install mcpnuke if needed
     if [ ! -f "$SCAN" ] || [ ! -d "$PROJECT_DIR/.venv" ]; then
-        explain "Installing mcpvenom..."
+        explain "Installing mcpnuke..."
         cd "$PROJECT_DIR" && ./quickstart.sh --skip-tests 2>&1 | tail -3
     else
-        ok "mcpvenom already installed"
+        ok "mcpnuke already installed"
     fi
 
     # Start DVMCP if not running
@@ -125,7 +125,7 @@ echo ""
 $SCAN --targets http://localhost:9001/sse --no-invoke 2>&1 || true
 
 echo ""
-echo -e "${BOLD}What mcpvenom found:${NC}"
+echo -e "${BOLD}What mcpnuke found:${NC}"
 echo ""
 explain "auth HIGH — The server accepted an MCP initialize request with no"
 explain "credentials at all. Anyone on the network can connect and enumerate tools."
@@ -208,7 +208,7 @@ banner "Phase 5: Attack Chains — Challenges 9-10"
 explain "Challenge 9 has 'remote_access' (command injection) + 'manage_permissions'."
 explain "Challenge 10 combines multiple vulnerability classes."
 explain ""
-explain "mcpvenom detects when findings CHAIN together into compound attacks."
+explain "mcpnuke detects when findings CHAIN together into compound attacks."
 echo ""
 
 $SCAN --targets http://localhost:9009/sse http://localhost:9010/sse --no-invoke 2>&1 || true
@@ -260,7 +260,7 @@ banner "Phase 7: MCP Threat Taxonomy Coverage"
 
 echo -e "${BOLD}  DVMCP Challenge → MCP Threat Taxonomy Mapping${NC}"
 echo ""
-echo "  Challenge  Port   Taxonomy   What mcpvenom detects"
+echo "  Challenge  Port   Taxonomy   What mcpnuke detects"
 echo "  ─────────  ────   ────────   ─────────────────────────────────────"
 echo "  1          9001   MCP-T01    Prompt injection in tool metadata"
 echo "  2          9002   MCP-T02    Tool poisoning, hidden instructions"

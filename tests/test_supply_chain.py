@@ -2,8 +2,8 @@
 
 import pytest
 
-from mcpvenom.core.models import TargetResult
-from mcpvenom.checks.supply_chain import check_supply_chain
+from mcpnuke.core.models import TargetResult
+from mcpnuke.checks.supply_chain import check_supply_chain
 
 
 def test_supply_chain_clean_tool(result_with_tools):
