@@ -119,3 +119,18 @@ def test_parse_args_baseline():
     args = parse_args(["--targets", "http://localhost:9001", "--save-baseline", "new_base.json"])
     assert args.save_baseline == "new_base.json"
     assert args.baseline is None
+
+
+def test_parse_args_claude_phase2_workers():
+    """--claude-phase2-workers should be accepted."""
+    args = parse_args(
+        [
+            "--targets",
+            "http://localhost:9001",
+            "--claude",
+            "--claude-phase2-workers",
+            "3",
+        ]
+    )
+    assert args.claude is True
+    assert args.claude_phase2_workers == 3

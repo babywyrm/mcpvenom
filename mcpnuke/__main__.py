@@ -164,6 +164,7 @@ def _main_inner() -> None:
             "claude": args.claude,
             "claude_model": args.claude_model,
             "claude_max_tools": args.claude_max_tools,
+            "claude_phase2_workers": args.claude_phase2_workers,
             "fast": args.fast,
             "probe_workers": args.probe_workers,
         }
@@ -242,6 +243,8 @@ def _main_inner() -> None:
             panel_lines.append("Auth: Bearer token")
     if args.claude:
         panel_lines.append(f"AI: Claude ({args.claude_model})")
+        if args.claude_phase2_workers > 1:
+            panel_lines.append(f"AI Phase2 workers: {args.claude_phase2_workers}")
 
     console.print(
         Panel(
@@ -259,6 +262,7 @@ def _main_inner() -> None:
         "claude": args.claude,
         "claude_model": args.claude_model,
         "claude_max_tools": args.claude_max_tools,
+        "claude_phase2_workers": args.claude_phase2_workers,
         "fast": args.fast,
         "probe_workers": args.probe_workers,
     }

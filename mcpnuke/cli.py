@@ -226,6 +226,14 @@ def parse_args(args: list[str] | None = None) -> argparse.Namespace:
         "Higher = more thorough but slower and costs more.",
     )
     p.add_argument(
+        "--claude-phase2-workers",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Parallel Claude workers for Phase 2 response analysis (default: 1). "
+        "Use 2-4 to reduce wall time on fast targets.",
+    )
+    p.add_argument(
         "--claude",
         action="store_true",
         help="Enable AI-powered analysis using Claude. Requires ANTHROPIC_API_KEY env var. "
