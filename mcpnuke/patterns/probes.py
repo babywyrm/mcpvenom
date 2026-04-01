@@ -140,6 +140,9 @@ ERROR_LEAKAGE_PATTERNS = [
     r"(?:BEGIN (?:RSA )?PRIVATE KEY)",
     r"(?:mongodb|postgres|mysql|redis)://\w+:\w+@",
     r"stack\s*trace|stacktrace",
+    r'"(?:error|exception|traceback|stack_?trace)"\s*:\s*"',
+    r'"(?:detail|message)"\s*:\s*"[^"]*(?:Error|Exception|Traceback)',
+    r"(?:internal\s+server|unexpected)\s+error",
 ]
 
 STEGANOGRAPHIC_RANGES = [

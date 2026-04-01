@@ -157,35 +157,35 @@ def check_indirect_injection(session, result: TargetResult, probe_opts: dict | N
                 continue
 
             base_args = _build_safe_args(tool)
-            target_param = content_params[0]
 
-            for probe in INDIRECT_INJECTION_PROBES:
-                test_args = {**base_args, target_param: probe}
-                resp = _call_tool(session, tool["name"], test_args, timeout=8)
-                text = _response_text(resp)
-                if not text:
-                    continue
+            for target_param in content_params:
+                for probe in INDIRECT_INJECTION_PROBES:
+                    test_args = {**base_args, target_param: probe}
+                    resp = _call_tool(session, tool["name"], test_args, timeout=8)
+                    text = _response_text(resp)
+                    if not text:
+                        continue
 
-                for pat in INJECTION_PATTERNS + POISON_PATTERNS:
-                    if re.search(pat, text, re.IGNORECASE | re.DOTALL):
+                    for pat in INJECTION_PATTERNS + POISON_PATTERNS:
+                        if re.search(pat, text, re.IGNORECASE | re.DOTALL):
+                            result.add(
+                                "indirect_injection",
+                                "CRITICAL",
+                                f"Indirect injection via content tool '{tool['name']}'",
+                                f"Probe in param '{target_param}' triggered injection in response",
+                                evidence=f"Probe: {probe[:80]}\nResponse: {text[:300]}",
+                            )
+                            break
+
+                    if "INDIRECT_CONFIRMED" in text:
                         result.add(
                             "indirect_injection",
                             "CRITICAL",
-                            f"Indirect injection via content tool '{tool['name']}'",
-                            f"Probe in param '{target_param}' triggered injection in response",
+                            f"Indirect injection: tool '{tool['name']}' follows embedded instructions",
+                            f"Content-processing tool executed injected instruction via '{target_param}'",
                             evidence=f"Probe: {probe[:80]}\nResponse: {text[:300]}",
                         )
                         break
-
-                if "INDIRECT_CONFIRMED" in text:
-                    result.add(
-                        "indirect_injection",
-                        "CRITICAL",
-                        f"Indirect injection: tool '{tool['name']}' follows embedded instructions",
-                        f"Content-processing tool executed injected instruction via '{target_param}'",
-                        evidence=f"Probe: {probe[:80]}\nResponse: {text[:300]}",
-                    )
-                    break
 
 
 def check_active_prompt_injection(session, result: TargetResult, probe_opts: dict | None = None):

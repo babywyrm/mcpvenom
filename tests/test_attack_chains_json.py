@@ -47,6 +47,7 @@ def test_check_attack_chains_extracts_tool_names():
     from mcpnuke.checks.chaining import check_attack_chains
 
     r = TargetResult(url="http://test")
+    r.tools = [{"name": "execute_command", "inputSchema": {}}]
     r.add("input_sanitization", "HIGH", "Tool 'execute_command' reflects probe canary unsanitized")
     r.add("code_execution", "CRITICAL", "Dangerous capability [shell_exec]: 'execute_command'")
     check_attack_chains(r)

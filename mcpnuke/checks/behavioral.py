@@ -110,7 +110,19 @@ def check_deep_rug_pull(session, result: TargetResult, probe_opts: dict | None =
         first_responses: dict[str, str] = {}
         last_responses: dict[str, str] = {}
 
-        probe_tools = list(before.values())[:6]
+        _PRIORITY_KEYWORDS = frozenset({
+            "mutate", "behavior", "exec", "hidden", "shadow",
+            "inject", "poison", "hook", "override", "patch",
+        })
+
+        def _priority(t: dict) -> int:
+            """Lower = higher priority. Tools with mutation-related keywords sort first."""
+            name = t.get("name", "").lower()
+            desc = (t.get("description") or "").lower()
+            text = f"{name} {desc}"
+            return 0 if any(kw in text for kw in _PRIORITY_KEYWORDS) else 1
+
+        probe_tools = sorted(before.values(), key=_priority)[:12]
         total_probes = len(probe_tools) * calls_per_tool
         probe_num = 0
         _log(f"    [dim]    phase 2: probing {len(probe_tools)} tools × {calls_per_tool} calls = {total_probes} invocations[/dim]")
@@ -202,77 +214,141 @@ def check_deep_rug_pull(session, result: TargetResult, probe_opts: dict | None =
 # State mutation (NEW — resources change after tool calls)
 # ---------------------------------------------------------------------------
 
+_WRITE_KEYWORDS = frozenset({
+    "store", "write", "save", "register", "update", "set", "put",
+    "create", "add", "insert", "push", "send", "post", "mutate",
+})
+_READ_KEYWORDS = frozenset({
+    "list", "read", "get", "recall", "fetch", "show", "query",
+    "search", "find", "retrieve", "describe", "status",
+})
+_STATE_CANARY = "MCPNUKE_STATE_PROBE_7x9k"
+
+
+def _classify_tool(tool: dict) -> str | None:
+    """Classify a tool as 'write', 'read', or None based on name/description."""
+    name = tool.get("name", "").lower()
+    desc = (tool.get("description") or "").lower()
+    text = f"{name} {desc}"
+    if any(kw in text for kw in _WRITE_KEYWORDS):
+        return "write"
+    if any(kw in text for kw in _READ_KEYWORDS):
+        return "read"
+    return None
+
+
+def _build_args(tool: dict, canary: str | None = None) -> dict:
+    props = tool.get("inputSchema", {}).get("properties", {})
+    args: dict = {}
+    for pname, pdef in props.items():
+        if "enum" in pdef:
+            args[pname] = pdef["enum"][0]
+        elif pdef.get("type") in ("number", "integer"):
+            args[pname] = 1
+        elif pdef.get("type") == "boolean":
+            args[pname] = False
+        elif canary and pdef.get("type") in (None, "string"):
+            args[pname] = canary
+        else:
+            args[pname] = "test"
+    return args
+
+
 def check_state_mutation(session, result: TargetResult):
-    """Detect if tool invocations silently mutate server state (resources, tool list)."""
+    """Detect if tool invocations silently mutate server state.
+
+    Phase 1 (resource-based): snapshot resources, invoke tools, diff.
+    Phase 2 (write-then-read): call write-like tools with a canary,
+    then call read-like tools and check if the canary leaks through.
+    """
     with time_check("state_mutation", result):
-        if not result.resources:
-            return
+        # Phase 1: resource-based (original logic)
+        if result.resources:
+            res_before: dict[str, str] = {}
+            for r in result.resources[:6]:
+                uri = r.get("uri", "")
+                try:
+                    resp = session.call("resources/read", {"uri": uri}, timeout=10)
+                    if resp and "result" in resp:
+                        res_before[uri] = json.dumps(resp["result"], sort_keys=True)
+                except Exception:
+                    pass
 
-        # Snapshot resource contents (cap at 6 to stay fast)
-        res_before: dict[str, str] = {}
-        for r in result.resources[:6]:
-            uri = r.get("uri", "")
-            try:
-                resp = session.call("resources/read", {"uri": uri}, timeout=10)
-                if resp and "result" in resp:
-                    res_before[uri] = json.dumps(resp["result"], sort_keys=True)
-            except Exception:
-                pass
+            if res_before:
+                for tool in result.tools[:4]:
+                    name = tool.get("name", "")
+                    args = _build_args(tool)
+                    try:
+                        session.call("tools/call", {"name": name, "arguments": args}, timeout=8)
+                    except Exception:
+                        pass
+                time.sleep(1)
 
-        if not res_before:
-            return
+                rr2 = session.call("resources/list", timeout=15)
+                if rr2 and "result" in rr2:
+                    after_uris = {r.get("uri") for r in rr2["result"].get("resources", [])}
 
-        # Invoke tools
-        for tool in result.tools[:4]:
-            name = tool.get("name", "")
-            props = tool.get("inputSchema", {}).get("properties", {})
-            args = {}
-            for pname, pdef in props.items():
-                if "enum" in pdef:
-                    args[pname] = pdef["enum"][0]
-                else:
-                    args[pname] = "test"
-            try:
-                session.call("tools/call", {"name": name, "arguments": args}, timeout=8)
-            except Exception:
-                pass
-        time.sleep(1)
-
-        # Re-enumerate resources
-        rr2 = session.call("resources/list", timeout=15)
-        if not rr2 or "result" not in rr2:
-            return
-
-        after_uris = {r.get("uri") for r in rr2["result"].get("resources", [])}
-
-        new_uris = after_uris - set(res_before)
-        if new_uris:
-            result.add(
-                "state_mutation", "HIGH",
-                f"New resource(s) appeared after tool invocations",
-                f"New URIs: {sorted(new_uris)}",
-            )
-
-        gone_uris = set(res_before) - after_uris
-        for uri in gone_uris:
-            result.add(
-                "state_mutation", "HIGH",
-                f"Resource '{uri}' disappeared after tool invocations",
-            )
-
-        for uri in set(res_before) & after_uris:
-            try:
-                resp = session.call("resources/read", {"uri": uri}, timeout=10)
-                if resp and "result" in resp:
-                    after_content = json.dumps(resp["result"], sort_keys=True)
-                    if after_content != res_before[uri]:
+                    new_uris = after_uris - set(res_before)
+                    if new_uris:
                         result.add(
-                            "state_mutation", "MEDIUM",
-                            f"Resource '{uri}' content changed after tool invocations",
-                            "Tool calls silently mutated server-side state",
+                            "state_mutation", "HIGH",
+                            f"New resource(s) appeared after tool invocations",
+                            f"New URIs: {sorted(new_uris)}",
                         )
+
+                    gone_uris = set(res_before) - after_uris
+                    for uri in gone_uris:
+                        result.add(
+                            "state_mutation", "HIGH",
+                            f"Resource '{uri}' disappeared after tool invocations",
+                        )
+
+                    for uri in set(res_before) & after_uris:
+                        try:
+                            resp = session.call("resources/read", {"uri": uri}, timeout=10)
+                            if resp and "result" in resp:
+                                after_content = json.dumps(resp["result"], sort_keys=True)
+                                if after_content != res_before[uri]:
+                                    result.add(
+                                        "state_mutation", "MEDIUM",
+                                        f"Resource '{uri}' content changed after tool invocations",
+                                        "Tool calls silently mutated server-side state",
+                                    )
+                        except Exception:
+                            pass
+
+        # Phase 2: write-then-read probe (works without resources)
+        writers = [t for t in result.tools if _classify_tool(t) == "write"][:4]
+        readers = [t for t in result.tools if _classify_tool(t) == "read"][:4]
+
+        if not writers or not readers:
+            return
+
+        for writer in writers:
+            w_name = writer.get("name", "")
+            w_args = _build_args(writer, canary=_STATE_CANARY)
+            try:
+                session.call("tools/call", {"name": w_name, "arguments": w_args}, timeout=8)
             except Exception:
-                pass
+                continue
+
+            for reader in readers:
+                r_name = reader.get("name", "")
+                if r_name == w_name:
+                    continue
+                r_args = _build_args(reader)
+                try:
+                    resp = session.call("tools/call", {"name": r_name, "arguments": r_args}, timeout=8)
+                except Exception:
+                    continue
+                text = _extract_text(resp)
+                if _STATE_CANARY in text:
+                    result.add(
+                        "state_mutation", "HIGH",
+                        f"Cross-tool state leak: '{w_name}' → '{r_name}'",
+                        f"Data written via '{w_name}' is readable through '{r_name}'",
+                        evidence=f"Canary '{_STATE_CANARY}' injected via write tool appeared in read tool response",
+                    )
 
 
 # ---------------------------------------------------------------------------
